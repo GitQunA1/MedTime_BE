@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MedTime.Models.Enums;
+using System;
 using System.Collections.Generic;
 
 namespace MedTime.Models.Entities;
@@ -14,6 +15,9 @@ public partial class Prescriptionschedule
     public int? Interval { get; set; }
 
     public int? Dayofmonth { get; set; }
+
+    public RepeatPatternEnum RepeatPattern { get; set; } = RepeatPatternEnum.DAILY;
+    public DayOfWeekEnum? DayOfWeek { get; set; }
 
     public bool? Notificationenabled { get; set; }
 

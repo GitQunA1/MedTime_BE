@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MedTime.Models.Enums;
+using System;
 using System.Collections.Generic;
 
 namespace MedTime.Models.Entities;
@@ -12,6 +13,8 @@ public partial class Calllog
     public int? Scheduleid { get; set; }
 
     public DateTime? Calltime { get; set; }
+
+    public CallStatusEnum? Status { get; set; }
 
     public virtual Prescriptionschedule? Schedule { get; set; }
 

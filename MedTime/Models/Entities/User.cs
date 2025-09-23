@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MedTime.Models.Enums;
+using System;
 using System.Collections.Generic;
 
 namespace MedTime.Models.Entities;
@@ -18,6 +19,8 @@ public partial class User
     public string Email { get; set; } = null!;
 
     public string Passwordhash { get; set; } = null!;
+
+    public UserRoleEnum Role { get; set; } = UserRoleEnum.USER;
 
     public string? Uniquecode { get; set; }
 

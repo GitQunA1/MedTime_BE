@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MedTime.Models.Enums;
+using System;
 using System.Collections.Generic;
 
 namespace MedTime.Models.Entities;
@@ -10,6 +11,9 @@ public partial class Medicine
     public string Name { get; set; } = null!;
 
     public decimal? Strengthvalue { get; set; }
+
+    public MedicineTypeEnum? Type { get; set; }
+    public MedicineUnitEnum? StrengthUnit { get; set; }
 
     public string? Imageurl { get; set; }
 

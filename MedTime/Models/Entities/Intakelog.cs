@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MedTime.Models.Enums;
+using System;
 using System.Collections.Generic;
 
 namespace MedTime.Models.Entities;
@@ -16,6 +17,10 @@ public partial class Intakelog
     public DateTime Remindertime { get; set; }
 
     public DateTime? Actiontime { get; set; }
+
+    public IntakeActionEnum? Action { get; set; }
+    public ConfirmedByEnum? ConfirmedBy { get; set; }
+
 
     public string? Notes { get; set; }
 

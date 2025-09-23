@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using MedTime.Models.Entities;
+using MedTime.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace MedTime.Data;
@@ -41,14 +42,14 @@ public partial class MedTimeDBContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
-            .HasPostgresEnum("call_status", new[] { "CONNECTED", "MISSED", "FAILED", "CANCELLED" })
-            .HasPostgresEnum("confirmed_by", new[] { "USER", "GUARDIAN" })
-            .HasPostgresEnum("day_of_week", new[] { "MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN" })
-            .HasPostgresEnum("intake_action", new[] { "TAKEN", "POSTPONED", "SKIPPED", "NO_RESPONSE" })
-            .HasPostgresEnum("medicine_type", new[] { "TABLET", "CAPSULE", "SYRUP", "SOLUTION", "SUSPENSION", "POWDER", "SACHET", "INJECTION", "AMPULE", "VIAL", "EYE_DROPS", "EAR_DROPS", "NASAL_SPRAY", "INHALER", "OINTMENT", "CREAM", "GEL", "PATCH", "SUPPOSITORY", "OTHER" })
-            .HasPostgresEnum("medicine_unit", new[] { "MG", "G", "MCG", "IU", "UNIT", "ML", "L", "DROPS", "TABLET", "CAPSULE", "PATCH", "SACHET", "AMPULE", "VIAL", "MG_PER_ML", "MG_PER_5ML", "IU_PER_ML", "PERCENT", "OTHER" })
-            .HasPostgresEnum("repeat_pattern", new[] { "DAILY", "EVERY_X_DAYS", "WEEKLY", "MONTHLY" })
-            .HasPostgresEnum("user_role", new[] { "USER", "ADMIN" });
+            .HasPostgresEnum<CallStatusEnum>("call_status")
+            .HasPostgresEnum<ConfirmedByEnum>("confirmed_by") 
+            .HasPostgresEnum<DayOfWeekEnum>("day_of_week")
+            .HasPostgresEnum<IntakeActionEnum>("intake_action")
+            .HasPostgresEnum<MedicineTypeEnum>("medicine_type")
+            .HasPostgresEnum<MedicineUnitEnum>("medicine_unit")
+            .HasPostgresEnum<RepeatPatternEnum>("repeat_pattern")
+            .HasPostgresEnum<UserRoleEnum>("user_role");
 
         modelBuilder.Entity<Appointment>(entity =>
         {
@@ -88,6 +89,11 @@ public partial class MedTimeDBContext : DbContext
                 .HasColumnName("calltime");
             entity.Property(e => e.Scheduleid).HasColumnName("scheduleid");
             entity.Property(e => e.Userid).HasColumnName("userid");
+
+            // Map enum properties
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasColumnType("call_status");
 
             entity.HasOne(d => d.Schedule).WithMany(p => p.Calllogs)
                 .HasForeignKey(d => d.Scheduleid)
@@ -166,6 +172,14 @@ public partial class MedTimeDBContext : DbContext
             entity.Property(e => e.Scheduleid).HasColumnName("scheduleid");
             entity.Property(e => e.Userid).HasColumnName("userid");
 
+            // Map enum properties
+            entity.Property(e => e.Action)
+                .HasColumnName("action")
+                .HasColumnType("intake_action");
+            entity.Property(e => e.ConfirmedBy)
+                .HasColumnName("confirmedby")
+                .HasColumnType("confirmed_by");
+
             entity.HasOne(d => d.Prescription).WithMany(p => p.Intakelogs)
                 .HasForeignKey(d => d.Prescriptionid)
                 .HasConstraintName("intakelog_prescriptionid_fkey");
@@ -195,6 +209,14 @@ public partial class MedTimeDBContext : DbContext
             entity.Property(e => e.Strengthvalue)
                 .HasPrecision(10, 2)
                 .HasColumnName("strengthvalue");
+
+            // Map enum properties
+            entity.Property(e => e.Type)
+                .HasColumnName("type")
+                .HasColumnType("medicine_type");
+            entity.Property(e => e.StrengthUnit)
+                .HasColumnName("strengthunit")
+                .HasColumnType("medicine_unit");
         });
 
         modelBuilder.Entity<Prescription>(entity =>
@@ -248,6 +270,15 @@ public partial class MedTimeDBContext : DbContext
                 .HasColumnName("notificationenabled");
             entity.Property(e => e.Prescriptionid).HasColumnName("prescriptionid");
             entity.Property(e => e.Timeofday).HasColumnName("timeofday");
+
+            // Map enum properties
+            entity.Property(e => e.RepeatPattern)
+                .HasColumnName("repeatpattern")
+                .HasColumnType("repeat_pattern")
+                .HasDefaultValue(RepeatPatternEnum.DAILY);
+            entity.Property(e => e.DayOfWeek)
+                .HasColumnName("dayofweek")
+                .HasColumnType("day_of_week");
 
             entity.HasOne(d => d.Prescription).WithMany(p => p.Prescriptionschedules)
                 .HasForeignKey(d => d.Prescriptionid)
@@ -305,6 +336,12 @@ public partial class MedTimeDBContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("updatedat");
+
+            // Map enum property
+            entity.Property(e => e.Role)
+                .HasColumnName("role")
+                .HasColumnType("user_role")
+                .HasDefaultValue(UserRoleEnum.USER);
         });
 
         OnModelCreatingPartial(modelBuilder);
