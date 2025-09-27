@@ -1,9 +1,11 @@
 ﻿using MedTime.Models.Requests;
 using MedTime.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MedTime.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/appointment")]
     public class AppointmentController : ControllerBase

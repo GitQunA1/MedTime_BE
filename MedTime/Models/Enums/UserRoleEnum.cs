@@ -1,8 +1,12 @@
-﻿namespace MedTime.Models.Enums
+﻿using NpgsqlTypes;
+
+namespace MedTime.Models.Enums
 {
     public enum UserRoleEnum
     {
-        USER = 1,
-        ADMIN = 2
+        [PgName("USER")]
+        USER,
+        [PgName("ADMIN")]
+        ADMIN
     }
 }

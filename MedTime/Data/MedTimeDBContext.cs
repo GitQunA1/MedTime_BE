@@ -288,7 +288,7 @@ public partial class MedTimeDBContext : DbContext
             entity.ToTable("User");
 
             entity.HasIndex(e => e.Email, "User_email_key").IsUnique();
-
+            entity.HasIndex(e => e.UserName, "User_username_key").IsUnique();
             entity.HasIndex(e => e.Uniquecode, "User_uniquecode_key").IsUnique();
 
             entity.Property(e => e.Userid).HasColumnName("userid");
@@ -309,6 +309,9 @@ public partial class MedTimeDBContext : DbContext
             entity.Property(e => e.Ispremium)
                 .HasDefaultValue(false)
                 .HasColumnName("ispremium");
+            entity.Property(e => e.UserName)
+                .HasMaxLength(255)
+                .HasColumnName("username");
             entity.Property(e => e.Passwordhash)
                 .HasMaxLength(255)
                 .HasColumnName("passwordhash");
