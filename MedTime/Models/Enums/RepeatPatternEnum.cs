@@ -1,10 +1,16 @@
-﻿namespace MedTime.Models.Enums
+﻿using NpgsqlTypes;
+
+namespace MedTime.Models.Enums
 {
     public enum RepeatPatternEnum
     {
-        DAILY = 1,
-        EVERY_X_DAYS = 2,
-        WEEKLY = 3,
-        MONTHLY = 4
+        [PgName("DAILY")]
+        DAILY,
+        [PgName("EVERY_X_DAYS")]
+        EVERY_X_DAYS,
+        [PgName("WEEKLY")]
+        WEEKLY,
+        [PgName("MONTHLY")]
+        MONTHLY
     }
 }

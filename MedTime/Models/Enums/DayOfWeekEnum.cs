@@ -1,13 +1,22 @@
-﻿namespace MedTime.Models.Enums
+﻿using NpgsqlTypes;
+
+namespace MedTime.Models.Enums
 {
     public enum DayOfWeekEnum
     {
-        MON = 1,
-        TUE = 2,
-        WED = 3,
-        THU = 4,
-        FRI = 5,
-        SAT = 6,
-        SUN = 7
+        [PgName("MON")]
+        MON,
+        [PgName("TUE")]
+        TUE,
+        [PgName("WED")]
+        WED,
+        [PgName("THU")]
+        THU,
+        [PgName("FRI")]
+        FRI,
+        [PgName("SAT")]
+        SAT,
+        [PgName("SUN")]
+        SUN
     }
 }

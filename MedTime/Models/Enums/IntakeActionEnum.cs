@@ -1,10 +1,16 @@
-﻿namespace MedTime.Models.Enums
+﻿using NpgsqlTypes;
+
+namespace MedTime.Models.Enums
 {
     public enum IntakeActionEnum
     {
-        TAKEN = 1,
-        POSTPONED = 2,
-        SKIPPED = 3,
-        NO_RESPONSE = 4
+        [PgName("TAKEN")]
+        TAKEN,
+        [PgName("POSTPONED")]
+        POSTPONED,
+        [PgName("SKIPPED")]
+        SKIPPED,
+        [PgName("NO_RESPONSE")]
+        NO_RESPONSE
     }
 }

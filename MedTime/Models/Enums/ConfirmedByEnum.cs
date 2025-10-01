@@ -1,8 +1,12 @@
-﻿namespace MedTime.Models.Enums
+﻿using NpgsqlTypes;
+
+namespace MedTime.Models.Enums
 {
     public enum ConfirmedByEnum
     {
-        USER = 1,
-        GUARDIAN = 2
+        [PgName("USER")]
+        USER,
+        [PgName("GUARDIAN")]
+        GUARDIAN
     }
 }

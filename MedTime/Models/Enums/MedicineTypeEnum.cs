@@ -1,26 +1,48 @@
-﻿namespace MedTime.Models.Enums
+﻿using NpgsqlTypes;
+
+namespace MedTime.Models.Enums
 {
     public enum MedicineTypeEnum
     {
-        TABLET = 1,
-        CAPSULE = 2,
-        SYRUP = 3,
-        SOLUTION = 4,
-        SUSPENSION = 5,
-        POWDER = 6,
-        SACHET = 7,
-        INJECTION = 8,
-        AMPULE = 9,
-        VIAL = 10,
-        EYE_DROPS = 11,
-        EAR_DROPS = 12,
-        NASAL_SPRAY = 13, 
-        INHALER = 14,
-        OINTMENT = 15,
-        CREAM = 16,
-        GEL = 17,
-        PATCH = 18,
-        SUPPOSITORY = 19,
-        OTHER = 20
+        [PgName("TABLET")]
+        TABLET,
+        [PgName("CAPSULE")]
+        CAPSULE,
+        [PgName("SYRUP")]
+        SYRUP,
+        [PgName("SOLUTION")]
+        SOLUTION,
+        [PgName("SUSPENSION")]
+        SUSPENSION,
+        [PgName("POWDER")]
+        POWDER,
+        [PgName("SACHET")]
+        SACHET,
+        [PgName("INJECTION")]
+        INJECTION,
+        [PgName("AMPULE")]
+        AMPULE,
+        [PgName("VIAL")]
+        VIAL,
+        [PgName("EYE_DROPS")]
+        EYE_DROPS,
+        [PgName("EAR_DROPS")]
+        EAR_DROPS,
+        [PgName("NASAL_SPRAY")]
+        NASAL_SPRAY,
+        [PgName("INHALER")]
+        INHALER,
+        [PgName("OINTMENT")]
+        OINTMENT,
+        [PgName("CREAM")]
+        CREAM,
+        [PgName("GEL")]
+        GEL,
+        [PgName("PATCH")]
+        PATCH,
+        [PgName("SUPPOSITORY")]
+        SUPPOSITORY,
+        [PgName("OTHER")]
+        OTHER
     }
 }
