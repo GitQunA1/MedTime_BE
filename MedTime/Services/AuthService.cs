@@ -32,6 +32,26 @@ namespace MedTime.Services
             _tokenCache = tokenCache;
         }
 
+        public async Task<UserDto?> RegisterAsync(RegisterRequest request)
+        {
+            // check username exists
+            var existingUser = await _authRepo.GetByUsernameAsync(request.UserName);
+            if (existingUser != null)
+                return null;
+
+            var newUser = new User
+            {
+                UserName = request.UserName,
+                Passwordhash = _passwordHasher.HashPassword(null!, request.Password),
+                Role = Models.Enums.UserRoleEnum.USER,
+                Createdat = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
+            };
+
+            var createdUser = await _authRepo.CreateUserAsync(newUser);
+
+            return _mapper.Map<UserDto>(createdUser);
+        }
+
         public async Task<AuthResponse?> LoginAsync(LoginRequest request)
         {
             var user = await _authRepo.GetByUsernameAsync(request.UserName);
