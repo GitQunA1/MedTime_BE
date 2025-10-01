@@ -19,6 +19,7 @@ public partial class Intakelog
     public DateTime? Actiontime { get; set; }
 
     public IntakeActionEnum? Action { get; set; }
+    
     public ConfirmedByEnum? ConfirmedBy { get; set; }
 
 

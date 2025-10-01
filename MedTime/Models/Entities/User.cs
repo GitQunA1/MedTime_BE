@@ -8,7 +8,7 @@ public partial class User
 {
     public int Userid { get; set; }
 
-    public string Fullname { get; set; } = null!;
+    public string? Fullname { get; set; }
 
     public DateOnly? Dateofbirth { get; set; }
 
@@ -16,7 +16,7 @@ public partial class User
 
     public string? Phonenumber { get; set; }
 
-    public string Email { get; set; } = null!;
+    public string? Email { get; set; }
 
     public string UserName { get; set; } = null!;
 
