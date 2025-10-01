@@ -1,5 +1,8 @@
-﻿using MedTime.Models.Entities;
+﻿using MedTime.Helpers;
+using MedTime.Models.DTOs;
+using MedTime.Models.Entities;
 using MedTime.Models.Requests;
+using MedTime.Models.Responses;
 using MedTime.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,14 +21,75 @@ namespace MedTime.Controllers
             _authService = authService;
         }
 
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+                
+                var errorResponse = ApiResponse<UserDto>.ErrorResponse(
+                    errors,
+                    "Validation failed",
+                    400
+                );
+                return BadRequest(errorResponse);
+            }
+
+            try
+            {
+                var user = await _authService.RegisterAsync(request);
+                if (user == null)
+                {
+                    var errorResponse = ApiResponse<UserDto>.ErrorResponse(
+                        "Username already exists",
+                        "Registration failed",
+                        400
+                    );
+                    return BadRequest(errorResponse);
+                }
+
+                var successResponse = ApiResponse<UserDto>.SuccessResponse(
+                    user,
+                    "User registered successfully. Please login to continue.",
+                    201
+                );
+                return StatusCode(201, successResponse);
+            }
+            catch (Exception ex)
+            {
+                var errorResponse = ApiResponse<UserDto>.ErrorResponse(
+                    ex.Message,
+                    "An error occurred during registration",
+                    500
+                );
+                return StatusCode(500, errorResponse);
+            }
+        }
+
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             var response = await _authService.LoginAsync(request);
             if (response == null)
-                return Unauthorized(new { message = "Invalid username or password" });
+            {
+                var errorResponse = ApiResponse<AuthResponse>.ErrorResponse(
+                    "Invalid username or password",
+                    "Login failed",
+                    401
+                );
+                return Unauthorized(errorResponse);
+            }
 
-            return Ok(response);
+            var successResponse = ApiResponse<AuthResponse>.SuccessResponse(
+                response,
+                "Login successful",
+                200
+            );
+            return Ok(successResponse);
         }
 
         [HttpPost("refresh-token")]
@@ -33,9 +97,21 @@ namespace MedTime.Controllers
         {
             var response = await _authService.RefreshTokenAsync(request);
             if (response == null)
-                return Unauthorized(new { message = "Invalid token" });
+            {
+                var errorResponse = ApiResponse<AuthResponse>.ErrorResponse(
+                    "Invalid or expired refresh token",
+                    "Token refresh failed",
+                    401
+                );
+                return Unauthorized(errorResponse);
+            }
 
-            return Ok(response);
+            var successResponse = ApiResponse<AuthResponse>.SuccessResponse(
+                response,
+                "Token refreshed successfully",
+                200
+            );
+            return Ok(successResponse);
         }
 
         [Authorize]
@@ -44,10 +120,23 @@ namespace MedTime.Controllers
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
             var result = await _authService.LogoutAsync(userId);
+            
             if (!result)
-                return BadRequest(new { message = "Logout failed" });
+            {
+                var errorResponse = ApiResponse<object>.ErrorResponse(
+                    "Logout failed",
+                    "An error occurred during logout",
+                    400
+                );
+                return BadRequest(errorResponse);
+            }
 
-            return Ok(new { message = "Successfully logged out" });
+            var successResponse = ApiResponse<object>.SuccessResponse(
+                new { userId },
+                "Successfully logged out",
+                200
+            );
+            return Ok(successResponse);
         }
     }
 }
