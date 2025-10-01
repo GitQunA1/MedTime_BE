@@ -16,16 +16,22 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-NpgsqlConnection.GlobalTypeMapper.MapEnum<UserRoleEnum>("user_role");
-NpgsqlConnection.GlobalTypeMapper.MapEnum<MedicineTypeEnum>();
-NpgsqlConnection.GlobalTypeMapper.MapEnum<MedicineUnitEnum>();
-NpgsqlConnection.GlobalTypeMapper.MapEnum<RepeatPatternEnum>();
-NpgsqlConnection.GlobalTypeMapper.MapEnum<DayOfWeekEnum>();
-NpgsqlConnection.GlobalTypeMapper.MapEnum<IntakeActionEnum>();
-NpgsqlConnection.GlobalTypeMapper.MapEnum<ConfirmedByEnum>();
-NpgsqlConnection.GlobalTypeMapper.MapEnum<CallStatusEnum>();
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(builder.Configuration.GetConnectionString("DefaultConnection"));
+dataSourceBuilder.MapEnum<UserRoleEnum>("user_role");
+dataSourceBuilder.MapEnum<MedicineTypeEnum>("medicine_type");
+dataSourceBuilder.MapEnum<MedicineUnitEnum>("medicine_unit");
+dataSourceBuilder.MapEnum<RepeatPatternEnum>("repeat_pattern");
+dataSourceBuilder.MapEnum<DayOfWeekEnum>("day_of_week");
+dataSourceBuilder.MapEnum<IntakeActionEnum>("intake_action");
+dataSourceBuilder.MapEnum<ConfirmedByEnum>("confirmed_by");
+dataSourceBuilder.MapEnum<CallStatusEnum>("call_status");
+var dataSource = dataSourceBuilder.Build();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.SuppressModelStateInvalidFilter = true; // Tắt automatic model validation
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -60,22 +66,40 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+// Repositories
 builder.Services.AddScoped<AppointmentRepo>();
-builder.Services.AddScoped<AppointmentService>();
-
-builder.Services.AddScoped<JwtHelper>();
+builder.Services.AddScoped<CalllogRepo>();
+builder.Services.AddScoped<EmergencycontactRepo>();
+builder.Services.AddScoped<GuardianlinkRepo>();
+builder.Services.AddScoped<IntakelogRepo>();
+builder.Services.AddScoped<MedicineRepo>();
+builder.Services.AddScoped<PrescriptionRepo>();
+builder.Services.AddScoped<PrescriptionscheduleRepo>();
 builder.Services.AddScoped<AuthRepo>();
+
+// Services
+builder.Services.AddScoped<AppointmentService>();
+builder.Services.AddScoped<CalllogService>();
+builder.Services.AddScoped<EmergencycontactService>();
+builder.Services.AddScoped<GuardianlinkService>();
+builder.Services.AddScoped<IntakelogService>();
+builder.Services.AddScoped<MedicineService>();
+builder.Services.AddScoped<PrescriptionService>();
+builder.Services.AddScoped<PrescriptionscheduleService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<TokenCacheService>();
+
+// Helpers & Auth
+builder.Services.AddScoped<JwtHelper>();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddMemoryCache();
-builder.Services.AddScoped<TokenCacheService>();
 
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
-
+// Dùng dataSource đã được config với enum mapping
 builder.Services.AddDbContext<MedTimeDBContext>(options =>
 {
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+    options.UseNpgsql(dataSource)
            .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
 });
 
