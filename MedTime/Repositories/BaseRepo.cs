@@ -20,15 +20,7 @@ namespace MedTime.Repositories
 
         public virtual async Task<bool> UpdateAsync(TKey id, T entity)
         {
-            var existing = await _context.Set<T>().FindAsync(id);
-
-            if (existing == null)
-            {
-                return false;
-            }
-
-            _context.Entry(existing).CurrentValues.SetValues(entity);
-
+            _context.Entry(entity).State = EntityState.Modified;
             await _context.SaveChangesAsync();
             return true;
         }
@@ -48,9 +40,10 @@ namespace MedTime.Repositories
 
         public virtual async Task<T?> GetByIdAsync(TKey id)
         {
-            return await _context.Set<T>()
-                                .AsNoTracking()
-                                .FirstOrDefaultAsync(e => EF.Property<TKey>(e, "Id")!.Equals(id));
+            var entity = await _context.Set<T>().FindAsync(id);
+            if (entity == null) return null;
+            _context.Entry(entity).State = EntityState.Detached;
+            return entity;
         }
 
         public virtual async Task<List<T>> GetAllAsync()
@@ -58,6 +51,14 @@ namespace MedTime.Repositories
             return await _context.Set<T>()
                                 .AsNoTracking()
                                 .ToListAsync();
+        }
+
+        /// <summary>
+        /// Lấy IQueryable để có thể áp dụng pagination hoặc filter
+        /// </summary>
+        public virtual IQueryable<T> GetAllQuery()
+        {
+            return _context.Set<T>().AsNoTracking();
         }
     }
 }
