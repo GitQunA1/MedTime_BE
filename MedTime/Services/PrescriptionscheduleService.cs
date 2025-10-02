@@ -5,6 +5,7 @@ using MedTime.Models.Entities;
 using MedTime.Models.Requests;
 using MedTime.Models.Responses;
 using MedTime.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace MedTime.Services
 {
@@ -19,9 +20,16 @@ namespace MedTime.Services
             _mapper = mapper;
         }
 
-        public async Task<PaginatedResult<PrescriptionscheduleDto>> GetAllAsync(int pageNumber, int pageSize)
+        public async Task<PaginatedResult<PrescriptionscheduleDto>> GetAllAsync(int pageNumber, int pageSize, int? filterUserId = null)
         {
             var query = _repo.GetAllQuery();
+            
+            // Filter theo Prescription.Userid
+            if (filterUserId.HasValue)
+            {
+                query = query.Where(s => s.Prescription.Userid == filterUserId.Value);
+            }
+
             var paginatedEntities = await query.ToPaginatedListAsync(pageNumber, pageSize);
             var dtoItems = _mapper.Map<List<PrescriptionscheduleDto>>(paginatedEntities.Items);
 
@@ -31,6 +39,21 @@ namespace MedTime.Services
                 paginatedEntities.PageNumber,
                 paginatedEntities.PageSize
             );
+        }
+
+        /// <summary>
+        /// Kiểm tra user có quyền truy cập schedule này không (qua Prescription.Userid)
+        /// </summary>
+        public async Task<bool> CheckUserAccessAsync(int scheduleId, int userId)
+        {
+            var schedule = await _repo.GetByIdAsync(scheduleId);
+            if (schedule == null) return false;
+            
+            // Cần load Prescription để check Userid
+            var query = _repo.GetAllQuery().Where(s => s.Scheduleid == scheduleId);
+            var scheduleWithPrescription = await query.FirstOrDefaultAsync();
+            
+            return scheduleWithPrescription?.Prescription?.Userid == userId;
         }
 
         public async Task<PrescriptionscheduleDto?> GetByIdAsync(int id)

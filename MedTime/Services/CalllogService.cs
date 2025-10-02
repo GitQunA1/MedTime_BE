@@ -19,9 +19,15 @@ namespace MedTime.Services
             _mapper = mapper;
         }
 
-        public async Task<PaginatedResult<CalllogDto>> GetAllAsync(int pageNumber, int pageSize)
+        public async Task<PaginatedResult<CalllogDto>> GetAllAsync(int pageNumber, int pageSize, int? filterUserId = null)
         {
             var query = _repo.GetAllQuery();
+            
+            if (filterUserId.HasValue)
+            {
+                query = query.Where(c => c.Userid == filterUserId.Value);
+            }
+
             var paginatedEntities = await query.ToPaginatedListAsync(pageNumber, pageSize);
             var dtoItems = _mapper.Map<List<CalllogDto>>(paginatedEntities.Items);
 
