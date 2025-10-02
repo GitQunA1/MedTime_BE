@@ -1,4 +1,5 @@
 ﻿using MedTime.Models.Enums;
+using System.Text.Json.Serialization;
 
 namespace MedTime.Models.DTOs
 {
@@ -14,7 +15,9 @@ namespace MedTime.Models.DTOs
 
         public int? Dayofmonth { get; set; }
 
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public RepeatPatternEnum RepeatPattern { get; set; } = RepeatPatternEnum.DAILY;
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public DayOfWeekEnum? DayOfWeek { get; set; }
 
         public bool? Notificationenabled { get; set; }

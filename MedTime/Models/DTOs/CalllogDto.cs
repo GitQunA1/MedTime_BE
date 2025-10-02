@@ -1,4 +1,5 @@
 ﻿using MedTime.Models.Enums;
+using System.Text.Json.Serialization;
 
 namespace MedTime.Models.DTOs
 {
@@ -12,6 +13,7 @@ namespace MedTime.Models.DTOs
 
         public DateTime? Calltime { get; set; }
 
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public CallStatusEnum? Status { get; set; }
     }
 }

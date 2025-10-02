@@ -1,4 +1,5 @@
 ﻿using MedTime.Models.Enums;
+using System.Text.Json.Serialization;
 
 namespace MedTime.Models.DTOs
 {
@@ -18,8 +19,9 @@ namespace MedTime.Models.DTOs
 
         public string UserName { get; set; } = null!;
 
-        public string Passwordhash { get; set; } = null!;
+        // public string Passwordhash { get; set; } = null!;
 
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public UserRoleEnum Role { get; set; } = UserRoleEnum.USER;
 
         public string? Uniquecode { get; set; }
@@ -32,8 +34,8 @@ namespace MedTime.Models.DTOs
 
         public DateTime? Premiumend { get; set; }
 
-        public DateTime? Createdat { get; set; }
+        // public DateTime? Createdat { get; set; }
 
-        public DateTime? Updatedat { get; set; }
+        // public DateTime? Updatedat { get; set; }
     }
 }

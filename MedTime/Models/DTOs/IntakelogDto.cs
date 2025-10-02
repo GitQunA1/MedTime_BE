@@ -1,4 +1,5 @@
 ﻿using MedTime.Models.Enums;
+using System.Text.Json.Serialization;
 
 namespace MedTime.Models.DTOs
 {
@@ -16,7 +17,9 @@ namespace MedTime.Models.DTOs
 
         public DateTime? Actiontime { get; set; }
 
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public IntakeActionEnum? Action { get; set; }
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public ConfirmedByEnum? ConfirmedBy { get; set; }
 
 
