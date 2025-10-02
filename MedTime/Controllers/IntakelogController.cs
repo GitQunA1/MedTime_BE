@@ -32,7 +32,12 @@ namespace MedTime.Controllers
                     400));
             }
 
-            var paginatedResult = await _service.GetAllAsync(pagination.PageNumber, pagination.PageSize);
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userRole = User.FindFirstValue(ClaimTypes.Role);
+
+            int? filterUserId = (userRole == "ADMIN") ? null : int.Parse(userIdClaim!);
+
+            var paginatedResult = await _service.GetAllAsync(pagination.PageNumber, pagination.PageSize, filterUserId);
             return Ok(ApiResponse<PaginatedResult<IntakelogDto>>.SuccessResponse(
                 paginatedResult,
                 "Intake logs retrieved successfully"));
@@ -48,6 +53,14 @@ namespace MedTime.Controllers
                     "Intake log not found",
                     "Could not find intake log with given ID",
                     404));
+            }
+
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userRole = User.FindFirstValue(ClaimTypes.Role);
+
+            if (userRole != "ADMIN" && dto.Userid != int.Parse(userIdClaim!))
+            {
+                return Forbid();
             }
 
             return Ok(ApiResponse<IntakelogDto>.SuccessResponse(dto, "Intake log retrieved successfully"));
@@ -91,8 +104,8 @@ namespace MedTime.Controllers
                     400));
             }
 
-            var result = await _service.UpdateAsync(id, request);
-            if (!result)
+            var existing = await _service.GetByIdAsync(id);
+            if (existing == null)
             {
                 return NotFound(ApiResponse<object>.ErrorResponse(
                     "Intake log not found",
@@ -100,14 +113,23 @@ namespace MedTime.Controllers
                     404));
             }
 
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userRole = User.FindFirstValue(ClaimTypes.Role);
+
+            if (userRole != "ADMIN" && existing.Userid != int.Parse(userIdClaim!))
+            {
+                return Forbid();
+            }
+
+            var result = await _service.UpdateAsync(id, request);
             return Ok(ApiResponse<object>.SuccessResponse(null!, "Intake log updated successfully"));
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteAsync(int id)
         {
-            var result = await _service.DeleteAsync(id);
-            if (!result)
+            var existing = await _service.GetByIdAsync(id);
+            if (existing == null)
             {
                 return NotFound(ApiResponse<object>.ErrorResponse(
                     "Intake log not found",
@@ -115,6 +137,15 @@ namespace MedTime.Controllers
                     404));
             }
 
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userRole = User.FindFirstValue(ClaimTypes.Role);
+
+            if (userRole != "ADMIN" && existing.Userid != int.Parse(userIdClaim!))
+            {
+                return Forbid();
+            }
+
+            var result = await _service.DeleteAsync(id);
             return Ok(ApiResponse<object>.SuccessResponse(null!, "Intake log deleted successfully"));
         }
     }
