@@ -139,6 +139,8 @@ TestResult*/
 **/[Dd]ocker-compose*
 docker-compose.override.yml
 
+!MedTime/Dockerfile
+
 # Publish output
 publish/
 out/
