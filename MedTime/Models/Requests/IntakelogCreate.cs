@@ -8,15 +8,25 @@ namespace MedTime.Models.Requests
         [Required(ErrorMessage = "Prescription ID is required")]
         public int Prescriptionid { get; set; }
 
+        /// <summary>
+        /// Optional: Nếu có thì lấy TimeOfDay từ PrescriptionSchedule
+        /// Nếu null thì backend tính toán từ FrequencyPerDay
+        /// </summary>
         public int? Scheduleid { get; set; }
 
-        [Required(ErrorMessage = "Reminder time is required")]
-        public DateTime Remindertime { get; set; }
-
+        /// <summary>
+        /// Optional: Thời điểm user thực sự uống thuốc (khi confirm)
+        /// </summary>
         public DateTime? Actiontime { get; set; }
 
+        /// <summary>
+        /// Action user đã thực hiện: TAKEN, MISSED, POSTPONED
+        /// </summary>
         public IntakeActionEnum? Action { get; set; }
 
+        /// <summary>
+        /// Ai confirm: USER, GUARDIAN, SYSTEM
+        /// </summary>
         public ConfirmedByEnum? ConfirmedBy { get; set; }
 
         [StringLength(500, ErrorMessage = "Notes cannot exceed 500 characters")]

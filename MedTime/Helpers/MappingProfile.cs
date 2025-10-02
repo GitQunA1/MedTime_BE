@@ -75,8 +75,11 @@ namespace MedTime.Helpers
             CreateMap<PrescriptionscheduleCreate, Prescriptionschedule>();
             CreateMap<PrescriptionscheduleUpdate, Prescriptionschedule>();
 
-            // User mapping
+            // User mappings
             CreateMap<User, UserDto>();
+            CreateMap<UserDto, User>();
+            CreateMap<UserUpdate, User>()
+                .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
 
         }
     }

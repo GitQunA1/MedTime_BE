@@ -75,6 +75,7 @@ builder.Services.AddScoped<IntakelogRepo>();
 builder.Services.AddScoped<MedicineRepo>();
 builder.Services.AddScoped<PrescriptionRepo>();
 builder.Services.AddScoped<PrescriptionscheduleRepo>();
+builder.Services.AddScoped<UserRepo>();
 builder.Services.AddScoped<AuthRepo>();
 
 // Services
@@ -86,6 +87,7 @@ builder.Services.AddScoped<IntakelogService>();
 builder.Services.AddScoped<MedicineService>();
 builder.Services.AddScoped<PrescriptionService>();
 builder.Services.AddScoped<PrescriptionscheduleService>();
+builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<TokenCacheService>();
 
