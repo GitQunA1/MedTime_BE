@@ -28,7 +28,7 @@ namespace MedTime.Services
         {
             var query = _repo.GetAllQuery();
             
-            // Nếu filterUserId được truyền vào, chỉ lấy prescription của user đó
+            // validate Prescription of user
             if (filterUserId.HasValue)
             {
                 query = query.Where(p => p.Userid == filterUserId.Value);
@@ -55,11 +55,11 @@ namespace MedTime.Services
         public async Task<PrescriptionDto> CreateAsync(PrescriptionCreate request, int userId)
         {
             var entity = _mapper.Map<Prescription>(request);
-            entity.Userid = userId; // Set từ JWT token
+            entity.Userid = userId;
             var createdEntity = await _repo.CreateAsync(entity);
 
             // Auto-generate PrescriptionSchedule nếu có FrequencyPerDay
-            if (createdEntity.Frequencyperday.HasValue && createdEntity.Frequencyperday.Value > 0)
+            if (createdEntity.Frequencyperday.HasValue && createdEntity.Frequencyperday.Value > 0 && createdEntity.Frequencyperday.Value < 6)
             {
                 await GenerateDefaultSchedulesAsync(createdEntity.Prescriptionid, createdEntity.Frequencyperday.Value);
             }
