@@ -35,15 +35,21 @@ public partial class MedTimeDBContext : DbContext
 
     public virtual DbSet<User> Users { get; set; }
 
+    public virtual DbSet<Devicetoken> Devicetokens { get; set; }
+
+    public virtual DbSet<Notificationhistory> Notificationhistories { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
             .HasPostgresEnum<CallStatusEnum>("call_status")
             .HasPostgresEnum<ConfirmedByEnum>("confirmed_by") 
             .HasPostgresEnum<DayOfWeekEnum>("day_of_week")
+            .HasPostgresEnum<DeviceTypeEnum>("device_type")
             .HasPostgresEnum<IntakeActionEnum>("intake_action")
             .HasPostgresEnum<MedicineTypeEnum>("medicine_type")
             .HasPostgresEnum<MedicineUnitEnum>("medicine_unit")
+            .HasPostgresEnum<NotificationStatusEnum>("notification_status")
             .HasPostgresEnum<RepeatPatternEnum>("repeat_pattern")
             .HasPostgresEnum<UserRoleEnum>("user_role");
 
@@ -341,6 +347,92 @@ public partial class MedTimeDBContext : DbContext
                 .HasColumnName("role")
                 .HasColumnType("user_role")
                 .HasDefaultValue(UserRoleEnum.USER);
+        });
+
+        modelBuilder.Entity<Devicetoken>(entity =>
+        {
+            entity.HasKey(e => e.Tokenid).HasName("devicetoken_pkey");
+
+            entity.ToTable("devicetoken");
+
+            entity.HasIndex(e => e.Userid, "idx_devicetoken_user");
+
+            entity.Property(e => e.Tokenid).HasColumnName("tokenid");
+            entity.Property(e => e.Userid).HasColumnName("userid");
+            entity.Property(e => e.Token)
+                .HasMaxLength(500)
+                .HasColumnName("token");
+            entity.Property(e => e.DeviceType)
+                .HasColumnName("devicetype")
+                .HasColumnType("device_type");
+            entity.Property(e => e.DeviceName)
+                .HasMaxLength(100)
+                .HasColumnName("devicename");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("createdat");
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("updatedat");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("isactive");
+
+            entity.HasOne(d => d.User).WithMany(p => p.Devicetokens)
+                .HasForeignKey(d => d.Userid)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("devicetoken_userid_fkey");
+        });
+
+        modelBuilder.Entity<Notificationhistory>(entity =>
+        {
+            entity.HasKey(e => e.Notificationid).HasName("notificationhistory_pkey");
+
+            entity.ToTable("notificationhistory");
+
+            entity.HasIndex(e => e.Userid, "idx_notificationhistory_user");
+            entity.HasIndex(e => e.SentAt, "idx_notificationhistory_sentat");
+
+            entity.Property(e => e.Notificationid).HasColumnName("notificationid");
+            entity.Property(e => e.Userid).HasColumnName("userid");
+            entity.Property(e => e.Prescriptionid).HasColumnName("prescriptionid");
+            entity.Property(e => e.Scheduleid).HasColumnName("scheduleid");
+            entity.Property(e => e.Title)
+                .HasMaxLength(255)
+                .HasColumnName("title");
+            entity.Property(e => e.Message)
+                .HasColumnName("message");
+            entity.Property(e => e.SentAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("sentat");
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasColumnType("notification_status")
+                .HasDefaultValue(NotificationStatusEnum.PENDING);
+            entity.Property(e => e.ErrorMessage)
+                .HasColumnName("errormessage");
+            entity.Property(e => e.IsRead)
+                .HasDefaultValue(false)
+                .HasColumnName("isread");
+            entity.Property(e => e.ReadAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("readat");
+
+            entity.HasOne(d => d.User).WithMany(p => p.Notificationhistories)
+                .HasForeignKey(d => d.Userid)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("notificationhistory_userid_fkey");
+
+            entity.HasOne(d => d.Prescription).WithMany(p => p.Notificationhistories)
+                .HasForeignKey(d => d.Prescriptionid)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("notificationhistory_prescriptionid_fkey");
+
+            entity.HasOne(d => d.Schedule).WithMany(p => p.Notificationhistories)
+                .HasForeignKey(d => d.Scheduleid)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("notificationhistory_scheduleid_fkey");
         });
 
         OnModelCreatingPartial(modelBuilder);

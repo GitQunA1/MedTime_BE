@@ -32,4 +32,6 @@ public partial class Prescription
     public virtual ICollection<Prescriptionschedule> Prescriptionschedules { get; set; } = new List<Prescriptionschedule>();
 
     public virtual User User { get; set; } = null!;
+
+    public virtual ICollection<Notificationhistory> Notificationhistories { get; set; } = new List<Notificationhistory>();
 }

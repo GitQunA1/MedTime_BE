@@ -25,9 +25,22 @@ dataSourceBuilder.MapEnum<DayOfWeekEnum>("day_of_week");
 dataSourceBuilder.MapEnum<IntakeActionEnum>("intake_action");
 dataSourceBuilder.MapEnum<ConfirmedByEnum>("confirmed_by");
 dataSourceBuilder.MapEnum<CallStatusEnum>("call_status");
+dataSourceBuilder.MapEnum<DeviceTypeEnum>("device_type");
+dataSourceBuilder.MapEnum<NotificationStatusEnum>("notification_status");
 var dataSource = dataSourceBuilder.Build();
 
 builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Cấu hình để ENUMs serialize/deserialize dưới dạng STRING thay vì NUMBER
+        // Case-insensitive: accept "android", "Android", "ANDROID"
+        options.JsonSerializerOptions.Converters.Add(
+            new System.Text.Json.Serialization.JsonStringEnumConverter(
+                System.Text.Json.JsonNamingPolicy.CamelCase, 
+                allowIntegerValues: false
+            )
+        );
+    })
     .ConfigureApiBehaviorOptions(options =>
     {
         options.SuppressModelStateInvalidFilter = true; // Tắt automatic model validation

@@ -28,4 +28,6 @@ public partial class Prescriptionschedule
     public virtual ICollection<Intakelog> Intakelogs { get; set; } = new List<Intakelog>();
 
     public virtual Prescription Prescription { get; set; } = null!;
+
+    public virtual ICollection<Notificationhistory> Notificationhistories { get; set; } = new List<Notificationhistory>();
 }

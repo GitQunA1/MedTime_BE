@@ -51,4 +51,8 @@ public partial class User
     public virtual ICollection<Intakelog> Intakelogs { get; set; } = new List<Intakelog>();
 
     public virtual ICollection<Prescription> Prescriptions { get; set; } = new List<Prescription>();
+
+    public virtual ICollection<Devicetoken> Devicetokens { get; set; } = new List<Devicetoken>();
+
+    public virtual ICollection<Notificationhistory> Notificationhistories { get; set; } = new List<Notificationhistory>();
 }
