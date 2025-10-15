@@ -34,5 +34,10 @@ namespace MedTime.Repositories
                 throw new Exception($"Database error: {ex.InnerException?.Message ?? ex.Message}", ex);
             }
         }
+
+        public async Task<bool> IsUniqueCodeAvailableAsync(string uniqueCode)
+        {
+            return !await _context.Users.AnyAsync(u => u.Uniquecode == uniqueCode);
+        }
     }
 }

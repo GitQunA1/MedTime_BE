@@ -39,17 +39,33 @@ namespace MedTime.Services
             if (existingUser != null)
                 return null;
 
+            // Generate unique 6-digit code
+            string uniqueCode;
+            bool isUnique;
+            do
+            {
+                uniqueCode = GenerateUniqueCode();
+                isUnique = await _authRepo.IsUniqueCodeAvailableAsync(uniqueCode);
+            } while (!isUnique);
+
             var newUser = new User
             {
                 UserName = request.UserName,
                 Passwordhash = _passwordHasher.HashPassword(null!, request.Password),
                 Role = Models.Enums.UserRoleEnum.USER,
+                Uniquecode = uniqueCode,
                 Createdat = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
             };
 
             var createdUser = await _authRepo.CreateUserAsync(newUser);
 
             return _mapper.Map<UserDto>(createdUser);
+        }
+
+        private string GenerateUniqueCode()
+        {
+            var random = new Random();
+            return random.Next(100000, 999999).ToString();
         }
 
         public async Task<AuthResponse?> LoginAsync(LoginRequest request)
