@@ -33,7 +33,6 @@ builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         // Cấu hình để ENUMs serialize/deserialize dưới dạng STRING thay vì NUMBER
-        // Case-insensitive: accept "android", "Android", "ANDROID"
         options.JsonSerializerOptions.Converters.Add(
             new System.Text.Json.Serialization.JsonStringEnumConverter(
                 System.Text.Json.JsonNamingPolicy.CamelCase, 
@@ -45,6 +44,7 @@ builder.Services.AddControllers()
     {
         options.SuppressModelStateInvalidFilter = true; // Tắt automatic model validation
     });
+    
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -91,6 +91,8 @@ builder.Services.AddScoped<PrescriptionRepo>();
 builder.Services.AddScoped<PrescriptionscheduleRepo>();
 builder.Services.AddScoped<UserRepo>();
 builder.Services.AddScoped<AuthRepo>();
+builder.Services.AddScoped<DevicetokenRepo>();
+builder.Services.AddScoped<NotificationhistoryRepo>();
 
 // Services
 builder.Services.AddScoped<AppointmentService>();
@@ -104,6 +106,9 @@ builder.Services.AddScoped<PrescriptionscheduleService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<TokenCacheService>();
+builder.Services.AddSingleton<FirebaseService>();
+builder.Services.AddScoped<DevicetokenService>();
+builder.Services.AddScoped<NotificationService>();
 
 // Helpers & Auth
 builder.Services.AddScoped<JwtHelper>();

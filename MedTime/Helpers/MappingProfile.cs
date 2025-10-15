@@ -81,6 +81,14 @@ namespace MedTime.Helpers
             CreateMap<UserUpdate, User>()
                 .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
 
+            // Devicetoken mappings
+            CreateMap<Devicetoken, DevicetokenDto>();
+            CreateMap<DevicetokenDto, Devicetoken>();
+
+            // Notificationhistory mappings
+            CreateMap<Notificationhistory, NotificationhistoryDto>();
+            CreateMap<NotificationhistoryDto, Notificationhistory>();
+
         }
     }
 
