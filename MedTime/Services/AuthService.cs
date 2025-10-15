@@ -132,5 +132,36 @@ namespace MedTime.Services
             _tokenCache.RemoveRefreshToken(userId);
             return true;
         }
+
+        public async Task<bool> ChangePasswordAsync(int userId, ChangePasswordRequest request)
+        {
+            // Lấy user hiện tại
+            var user = await _authRepo.GetByIdAsync(userId);
+            if (user == null)
+                return false;
+
+            // Verify current password
+            var passwordVerification = _passwordHasher.VerifyHashedPassword(
+                user,
+                user.Passwordhash,
+                request.CurrentPassword);
+
+            if (passwordVerification == PasswordVerificationResult.Failed)
+                return false;
+
+            // Hash new password
+            user.Passwordhash = _passwordHasher.HashPassword(user, request.NewPassword);
+
+            // Update password in database
+            var result = await _authRepo.UpdatePasswordAsync(user);
+
+            // Nếu đổi password thành công, xóa tất cả refresh tokens (logout all devices)
+            if (result)
+            {
+                _tokenCache.RemoveRefreshToken(userId);
+            }
+
+            return result;
+        }
     }
 }

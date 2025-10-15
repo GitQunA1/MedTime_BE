@@ -138,5 +138,57 @@ namespace MedTime.Controllers
             );
             return Ok(successResponse);
         }
+
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+                
+                var errorResponse = ApiResponse<object>.ErrorResponse(
+                    errors,
+                    "Validation failed",
+                    400
+                );
+                return BadRequest(errorResponse);
+            }
+
+            try
+            {
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+                var result = await _authService.ChangePasswordAsync(userId, request);
+
+                if (!result)
+                {
+                    var errorResponse = ApiResponse<object>.ErrorResponse(
+                        "Current password is incorrect",
+                        "Change password failed",
+                        400
+                    );
+                    return BadRequest(errorResponse);
+                }
+
+                var successResponse = ApiResponse<object>.SuccessResponse(
+                    new { userId },
+                    "Password changed successfully. Please login again with your new password.",
+                    200
+                );
+                return Ok(successResponse);
+            }
+            catch (Exception ex)
+            {
+                var errorResponse = ApiResponse<object>.ErrorResponse(
+                    ex.Message,
+                    "An error occurred while changing password",
+                    500
+                );
+                return StatusCode(500, errorResponse);
+            }
+        }
     }
 }

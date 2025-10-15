@@ -39,5 +39,25 @@ namespace MedTime.Repositories
         {
             return !await _context.Users.AnyAsync(u => u.Uniquecode == uniqueCode);
         }
+
+        public async Task<User?> GetByIdAsync(int userId)
+        {
+            return await _context.Users
+                .FirstOrDefaultAsync(u => u.Userid == userId);
+        }
+
+        public async Task<bool> UpdatePasswordAsync(User user)
+        {
+            try
+            {
+                _context.Users.Update(user);
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Database error: {ex.InnerException?.Message ?? ex.Message}", ex);
+            }
+        }
     }
 }
