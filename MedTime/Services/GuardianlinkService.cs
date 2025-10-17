@@ -2,6 +2,7 @@ using AutoMapper;
 using MedTime.Helpers;
 using MedTime.Models.DTOs;
 using MedTime.Models.Entities;
+using MedTime.Models.Enums;
 using MedTime.Models.Requests;
 using MedTime.Models.Responses;
 using MedTime.Repositories;
@@ -11,11 +12,13 @@ namespace MedTime.Services
     public class GuardianlinkService
     {
         private readonly GuardianlinkRepo _repo;
+        private readonly UserRepo _userRepo;
         private readonly IMapper _mapper;
 
-        public GuardianlinkService(GuardianlinkRepo repo, IMapper mapper)
+        public GuardianlinkService(GuardianlinkRepo repo, UserRepo userRepo, IMapper mapper)
         {
             _repo = repo;
+            _userRepo = userRepo;
             _mapper = mapper;
         }
 
@@ -40,9 +43,50 @@ namespace MedTime.Services
             return _mapper.Map<GuardianlinkDto>(entity);
         }
 
-        public async Task<GuardianlinkDto> CreateAsync(GuardianlinkCreate request)
+        /// <summary>
+        /// Tạo guardian link mới với validation:
+        /// 1. Patient không được là ADMIN
+        /// 2. Uniquecode phải tồn tại và thuộc USER role
+        /// 3. Guardian không thể tự theo dõi chính mình
+        /// </summary>
+        public async Task<GuardianlinkDto> CreateAsync(int guardianId, GuardianlinkCreate request)
         {
-            var entity = _mapper.Map<Guardianlink>(request);
+            // 1. Tìm Patient bằng Uniquecode
+            var allUsers = await _userRepo.GetAllAsync();
+            var patient = allUsers.FirstOrDefault(u => u.Uniquecode == request.Uniquecode);
+
+            if (patient == null)
+            {
+                throw new InvalidOperationException($"User with Uniquecode '{request.Uniquecode}' not found.");
+            }
+
+            // 2. Check Patient không được là ADMIN
+            if (patient.Role == UserRoleEnum.ADMIN)
+            {
+                throw new InvalidOperationException("Cannot add guardian link for ADMIN users.");
+            }
+
+            // 3. Check Guardian không tự theo dõi chính mình
+            if (patient.Userid == guardianId)
+            {
+                throw new InvalidOperationException("You cannot add yourself as a guardian link.");
+            }
+
+            // 4. Check link đã tồn tại chưa
+            var existingLink = await _repo.GetByIdAsync(guardianId, patient.Userid);
+            if (existingLink != null)
+            {
+                throw new InvalidOperationException("Guardian link already exists.");
+            }
+
+            // 5. Tạo guardian link
+            var entity = new Guardianlink
+            {
+                Guardianid = guardianId,
+                Patientid = patient.Userid,
+                Createdat = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
+            };
+
             var createdEntity = await _repo.CreateAsync(entity);
             return _mapper.Map<GuardianlinkDto>(createdEntity);
         }

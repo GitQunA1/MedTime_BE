@@ -5,6 +5,7 @@ using MedTime.Models.Responses;
 using MedTime.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace MedTime.Controllers
 {
@@ -63,11 +64,31 @@ namespace MedTime.Controllers
                     400));
             }
 
-            var createdDto = await _service.CreateAsync(request);
-            return Ok(ApiResponse<GuardianlinkDto>.SuccessResponse(
-                createdDto,
-                "Guardian link created successfully",
-                201));
+            // Extract Guardian ID from JWT token
+            var guardianIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(guardianIdClaim) || !int.TryParse(guardianIdClaim, out int guardianId))
+            {
+                return Unauthorized(ApiResponse<object>.ErrorResponse(
+                    "Invalid token",
+                    "Could not extract user ID from token",
+                    401));
+            }
+
+            try
+            {
+                var createdDto = await _service.CreateAsync(guardianId, request);
+                return Ok(ApiResponse<GuardianlinkDto>.SuccessResponse(
+                    createdDto,
+                    "Guardian link created successfully",
+                    201));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponse<object>.ErrorResponse(
+                    "Validation failed",
+                    ex.Message,
+                    400));
+            }
         }
 
         [HttpPut("{guardianId}/{patientId}")]

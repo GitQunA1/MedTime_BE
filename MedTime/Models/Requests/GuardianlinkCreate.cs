@@ -4,10 +4,13 @@ namespace MedTime.Models.Requests
 {
     public class GuardianlinkCreate
     {
-        [Required(ErrorMessage = "Guardian ID is required")]
-        public int Guardianid { get; set; }
-
-        [Required(ErrorMessage = "Patient ID is required")]
-        public int Patientid { get; set; }
+        /// <summary>
+        /// Uniquecode của người bị theo dõi (Patient)
+        /// Frontend nhập code này để tìm user
+        /// </summary>
+        [Required(ErrorMessage = "Uniquecode is required")]
+        [StringLength(50, ErrorMessage = "Uniquecode cannot exceed 50 characters")]
+        public string Uniquecode { get; set; } = string.Empty;
     }
 }
+
