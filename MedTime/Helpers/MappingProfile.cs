@@ -45,7 +45,9 @@ namespace MedTime.Helpers
             CreateMap<EmergencycontactUpdate, Emergencycontact>();
 
             // Guardianlink mappings
-            CreateMap<Guardianlink, GuardianlinkDto>();
+            CreateMap<Guardianlink, GuardianlinkDto>()
+                .ForMember(dest => dest.GuardianFullname, opt => opt.MapFrom(src => src.Guardian != null ? src.Guardian.Fullname : null))
+                .ForMember(dest => dest.PatientFullname, opt => opt.MapFrom(src => src.Patient != null ? src.Patient.Fullname : null));
             CreateMap<GuardianlinkDto, Guardianlink>();
             CreateMap<GuardianlinkCreate, Guardianlink>()
                 .ForMember(dest => dest.Createdat, opt => opt.MapFrom(src => DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)));

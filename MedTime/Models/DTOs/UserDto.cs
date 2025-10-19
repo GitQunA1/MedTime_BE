@@ -18,9 +18,7 @@ namespace MedTime.Models.DTOs
         public string Email { get; set; } = null!;
 
         public string UserName { get; set; } = null!;
-
-        // public string Passwordhash { get; set; } = null!;
-
+        
         [JsonConverter(typeof(JsonStringEnumConverter))]
         public UserRoleEnum Role { get; set; } = UserRoleEnum.USER;
 

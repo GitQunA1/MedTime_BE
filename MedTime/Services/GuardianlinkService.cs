@@ -87,7 +87,10 @@ namespace MedTime.Services
                 Createdat = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
             };
 
-            var createdEntity = await _repo.CreateAsync(entity);
+            await _repo.CreateAsync(entity);
+
+            // 6. Load lại entity với navigation properties để map đầy đủ thông tin
+            var createdEntity = await _repo.GetByIdAsync(guardianId, patient.Userid);
             return _mapper.Map<GuardianlinkDto>(createdEntity);
         }
 
