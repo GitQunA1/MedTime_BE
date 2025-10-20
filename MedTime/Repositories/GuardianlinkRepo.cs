@@ -12,6 +12,15 @@ namespace MedTime.Repositories
             _context = context;
         }
 
+        // Override GetAllQuery để include Guardian và Patient navigation properties
+        public override IQueryable<Guardianlink> GetAllQuery()
+        {
+            return _context.Guardianlinks
+                .Include(g => g.Guardian)
+                .Include(g => g.Patient)
+                .AsNoTracking();
+        }
+
         // Override GetAllAsync để include Guardian và Patient navigation properties
         public override async Task<List<Guardianlink>> GetAllAsync()
         {
