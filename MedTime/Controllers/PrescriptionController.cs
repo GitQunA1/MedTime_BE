@@ -40,8 +40,14 @@ namespace MedTime.Controllers
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var userRole = User.FindFirstValue(ClaimTypes.Role);
 
-            // ADMIN: Lấy tất cả, USER: Chỉ lấy của chính mình
-            int? filterUserId = (userRole == "ADMIN") ? null : int.Parse(userIdClaim!);
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized(ApiResponse<object>.ErrorResponse(
+                    "Unauthorized", "User not logged in", 401));
+            }
+
+            // ADMIN: Lấy tất cả, USER: Chỉ lấy của chính mình (author)
+            int? filterUserId = (userRole == "ADMIN") ? null : int.Parse(userIdClaim);
 
             var paginatedResult = await _service.GetAllAsync(pagination.PageNumber, pagination.PageSize, filterUserId);
             return Ok(ApiResponse<PaginatedResult<PrescriptionDto>>.SuccessResponse(
@@ -51,7 +57,7 @@ namespace MedTime.Controllers
 
         /// <summary>
         /// Lấy thông tin prescription theo ID
-        /// USER: Chỉ xem được prescription của chính mình
+        /// USER: Chỉ xem được prescription của chính mình (author)
         /// ADMIN: Xem tất cả
         /// </summary>
         [HttpGet("{id}")]
@@ -69,10 +75,19 @@ namespace MedTime.Controllers
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var userRole = User.FindFirstValue(ClaimTypes.Role);
 
-            // Kiểm tra quyền: ADMIN hoặc chính user đó
-            if (userRole != "ADMIN" && dto.Userid != int.Parse(userIdClaim!))
+            if (string.IsNullOrEmpty(userIdClaim))
             {
-                return Forbid();
+                return Unauthorized(ApiResponse<object>.ErrorResponse(
+                    "Unauthorized", "User not logged in", 401));
+            }
+
+            // Kiểm tra quyền: ADMIN hoặc chính user đó (author)
+            if (userRole != "ADMIN" && dto.Userid != int.Parse(userIdClaim))
+            {
+                return StatusCode(403, ApiResponse<object>.ErrorResponse(
+                    "Forbidden",
+                    "You do not have permission to view this prescription",
+                    403));
             }
 
             return Ok(ApiResponse<PrescriptionDto>.SuccessResponse(dto, "Prescription retrieved successfully"));
@@ -110,7 +125,7 @@ namespace MedTime.Controllers
 
         /// <summary>
         /// Cập nhật prescription
-        /// USER: Chỉ update được prescription của chính mình
+        /// USER: Chỉ update được prescription của chính mình (author)
         /// ADMIN: Update tất cả
         /// </summary>
         [HttpPut("{id}")]
@@ -137,9 +152,19 @@ namespace MedTime.Controllers
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var userRole = User.FindFirstValue(ClaimTypes.Role);
 
-            if (userRole != "ADMIN" && existing.Userid != int.Parse(userIdClaim!))
+            if (string.IsNullOrEmpty(userIdClaim))
             {
-                return Forbid();
+                return Unauthorized(ApiResponse<object>.ErrorResponse(
+                    "Unauthorized", "User not logged in", 401));
+            }
+
+            // Chỉ author hoặc admin mới được update
+            if (userRole != "ADMIN" && existing.Userid != int.Parse(userIdClaim))
+            {
+                return StatusCode(403, ApiResponse<object>.ErrorResponse(
+                    "Forbidden",
+                    "You do not have permission to update this prescription. Only the author can modify it.",
+                    403));
             }
 
             var result = await _service.UpdateAsync(id, request);
@@ -148,7 +173,7 @@ namespace MedTime.Controllers
 
         /// <summary>
         /// Xóa prescription
-        /// USER: Chỉ xóa được prescription của chính mình
+        /// USER: Chỉ xóa được prescription của chính mình (author)
         /// ADMIN: Xóa tất cả
         /// </summary>
         [HttpDelete("{id}")]
@@ -167,9 +192,19 @@ namespace MedTime.Controllers
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var userRole = User.FindFirstValue(ClaimTypes.Role);
 
-            if (userRole != "ADMIN" && existing.Userid != int.Parse(userIdClaim!))
+            if (string.IsNullOrEmpty(userIdClaim))
             {
-                return Forbid();
+                return Unauthorized(ApiResponse<object>.ErrorResponse(
+                    "Unauthorized", "User not logged in", 401));
+            }
+
+            // Chỉ author hoặc admin mới được xóa
+            if (userRole != "ADMIN" && existing.Userid != int.Parse(userIdClaim))
+            {
+                return StatusCode(403, ApiResponse<object>.ErrorResponse(
+                    "Forbidden",
+                    "You do not have permission to delete this prescription. Only the author can delete it.",
+                    403));
             }
 
             var result = await _service.DeleteAsync(id);

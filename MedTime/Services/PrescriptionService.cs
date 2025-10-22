@@ -52,6 +52,15 @@ namespace MedTime.Services
             return _mapper.Map<PrescriptionDto>(entity);
         }
 
+        /// <summary>
+        /// Kiểm tra prescription có thuộc về user không (để validate ownership)
+        /// </summary>
+        public async Task<bool> CheckPrescriptionOwnershipAsync(int prescriptionId, int userId)
+        {
+            var prescription = await _repo.GetByIdAsync(prescriptionId);
+            return prescription?.Userid == userId;
+        }
+
         public async Task<PrescriptionDto> CreateAsync(PrescriptionCreate request, int userId)
         {
             var entity = _mapper.Map<Prescription>(request);

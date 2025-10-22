@@ -15,15 +15,19 @@ namespace MedTime.Controllers
     public class PrescriptionscheduleController : ControllerBase
     {
         private readonly PrescriptionscheduleService _service;
+        private readonly PrescriptionService _prescriptionService;
 
-        public PrescriptionscheduleController(PrescriptionscheduleService service)
+        public PrescriptionscheduleController(
+            PrescriptionscheduleService service,
+            PrescriptionService prescriptionService)
         {
             _service = service;
+            _prescriptionService = prescriptionService;
         }
 
         /// <summary>
         /// Lấy danh sách prescription schedules có phân trang
-        /// USER: Chỉ xem được schedule của prescription thuộc về mình
+        /// USER: Chỉ xem được schedule của prescription thuộc về mình (author)
         /// ADMIN: Xem tất cả
         /// </summary>
         [HttpGet]
@@ -40,7 +44,14 @@ namespace MedTime.Controllers
             var userIdClaim = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
             var userRole = User.FindFirstValue(System.Security.Claims.ClaimTypes.Role);
 
-            int? filterUserId = (userRole == "ADMIN") ? null : int.Parse(userIdClaim!);
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized(ApiResponse<object>.ErrorResponse(
+                    "Unauthorized", "User not logged in", 401));
+            }
+
+            // ADMIN: Xem tất cả, USER: Chỉ xem schedule của prescription mình tạo (author)
+            int? filterUserId = (userRole == "ADMIN") ? null : int.Parse(userIdClaim);
 
             var paginatedResult = await _service.GetAllAsync(pagination.PageNumber, pagination.PageSize, filterUserId);
             return Ok(ApiResponse<PaginatedResult<PrescriptionscheduleDto>>.SuccessResponse(
@@ -50,7 +61,7 @@ namespace MedTime.Controllers
 
         /// <summary>
         /// Lấy thông tin prescription schedule theo ID
-        /// USER: Chỉ xem được schedule của prescription thuộc về mình
+        /// USER: Chỉ xem được schedule của prescription thuộc về mình (author)
         /// ADMIN: Xem tất cả
         /// </summary>
         [HttpGet("{id}")]
@@ -58,6 +69,12 @@ namespace MedTime.Controllers
         {
             var userIdClaim = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
             var userRole = User.FindFirstValue(System.Security.Claims.ClaimTypes.Role);
+
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized(ApiResponse<object>.ErrorResponse(
+                    "Unauthorized", "User not logged in", 401));
+            }
 
             var dto = await _service.GetByIdAsync(id);
             if (dto == null)
@@ -68,13 +85,16 @@ namespace MedTime.Controllers
                     404));
             }
 
-            // Check ownership qua Prescription.Userid
+            // Check ownership qua Prescription.Userid (chỉ author mới xem được)
             if (userRole != "ADMIN")
             {
-                var hasAccess = await _service.CheckUserAccessAsync(id, int.Parse(userIdClaim!));
+                var hasAccess = await _service.CheckUserAccessAsync(id, int.Parse(userIdClaim));
                 if (!hasAccess)
                 {
-                    return Forbid();
+                    return StatusCode(403, ApiResponse<object>.ErrorResponse(
+                        "Forbidden",
+                        "You do not have permission to view this schedule. Only the prescription author can access it.",
+                        403));
                 }
             }
 
@@ -83,6 +103,8 @@ namespace MedTime.Controllers
 
         /// <summary>
         /// Tạo prescription schedule mới
+        /// USER: Chỉ tạo schedule cho prescription của chính mình (author)
+        /// ADMIN: Tạo cho bất kỳ prescription nào
         /// </summary>
         [HttpPost]
         public async Task<IActionResult> CreateAsync([FromBody] PrescriptionscheduleCreate request)
@@ -95,6 +117,41 @@ namespace MedTime.Controllers
                     400));
             }
 
+            var userIdClaim = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
+            var userRole = User.FindFirstValue(System.Security.Claims.ClaimTypes.Role);
+
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized(ApiResponse<object>.ErrorResponse(
+                    "Unauthorized", "User not logged in", 401));
+            }
+
+            // Kiểm tra prescription có tồn tại không
+            var prescription = await _prescriptionService.GetByIdAsync(request.Prescriptionid);
+            if (prescription == null)
+            {
+                return NotFound(ApiResponse<object>.ErrorResponse(
+                    "Prescription not found",
+                    "Cannot create schedule for non-existent prescription",
+                    404));
+            }
+
+            // USER: Chỉ tạo schedule cho prescription của chính mình (author)
+            if (userRole != "ADMIN")
+            {
+                var isOwner = await _prescriptionService.CheckPrescriptionOwnershipAsync(
+                    request.Prescriptionid, 
+                    int.Parse(userIdClaim));
+                
+                if (!isOwner)
+                {
+                    return StatusCode(403, ApiResponse<object>.ErrorResponse(
+                        "Forbidden",
+                        "You do not have permission to create schedule for this prescription. Only the prescription author can do this.",
+                        403));
+                }
+            }
+
             var createdDto = await _service.CreateAsync(request);
             return Ok(ApiResponse<PrescriptionscheduleDto>.SuccessResponse(
                 createdDto,
@@ -104,7 +161,7 @@ namespace MedTime.Controllers
 
         /// <summary>
         /// Cập nhật prescription schedule
-        /// USER: Chỉ update được schedule của prescription thuộc về mình
+        /// USER: Chỉ update được schedule của prescription thuộc về mình (author)
         /// ADMIN: Update tất cả
         /// </summary>
         [HttpPut("{id}")]
@@ -121,6 +178,12 @@ namespace MedTime.Controllers
             var userIdClaim = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
             var userRole = User.FindFirstValue(System.Security.Claims.ClaimTypes.Role);
 
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized(ApiResponse<object>.ErrorResponse(
+                    "Unauthorized", "User not logged in", 401));
+            }
+
             var existing = await _service.GetByIdAsync(id);
             if (existing == null)
             {
@@ -130,12 +193,16 @@ namespace MedTime.Controllers
                     404));
             }
 
+            // USER: Chỉ update được schedule của prescription mình tạo (author)
             if (userRole != "ADMIN")
             {
-                var hasAccess = await _service.CheckUserAccessAsync(id, int.Parse(userIdClaim!));
+                var hasAccess = await _service.CheckUserAccessAsync(id, int.Parse(userIdClaim));
                 if (!hasAccess)
                 {
-                    return Forbid();
+                    return StatusCode(403, ApiResponse<object>.ErrorResponse(
+                        "Forbidden",
+                        "You do not have permission to update this schedule. Only the prescription author can modify it.",
+                        403));
                 }
             }
 
@@ -145,7 +212,7 @@ namespace MedTime.Controllers
 
         /// <summary>
         /// Xóa prescription schedule
-        /// USER: Chỉ xóa được schedule của prescription thuộc về mình
+        /// USER: Chỉ xóa được schedule của prescription thuộc về mình (author)
         /// ADMIN: Xóa tất cả
         /// </summary>
         [HttpDelete("{id}")]
@@ -153,6 +220,12 @@ namespace MedTime.Controllers
         {
             var userIdClaim = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
             var userRole = User.FindFirstValue(System.Security.Claims.ClaimTypes.Role);
+
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized(ApiResponse<object>.ErrorResponse(
+                    "Unauthorized", "User not logged in", 401));
+            }
 
             var existing = await _service.GetByIdAsync(id);
             if (existing == null)
@@ -163,12 +236,16 @@ namespace MedTime.Controllers
                     404));
             }
 
+            // USER: Chỉ xóa được schedule của prescription mình tạo (author)
             if (userRole != "ADMIN")
             {
-                var hasAccess = await _service.CheckUserAccessAsync(id, int.Parse(userIdClaim!));
+                var hasAccess = await _service.CheckUserAccessAsync(id, int.Parse(userIdClaim));
                 if (!hasAccess)
                 {
-                    return Forbid();
+                    return StatusCode(403, ApiResponse<object>.ErrorResponse(
+                        "Forbidden",
+                        "You do not have permission to delete this schedule. Only the prescription author can delete it.",
+                        403));
                 }
             }
 
