@@ -91,6 +91,12 @@ namespace MedTime.Helpers
             CreateMap<Notificationhistory, NotificationhistoryDto>();
             CreateMap<NotificationhistoryDto, Notificationhistory>();
 
+            // Payment mappings
+            CreateMap<Premiumplan, PremiumplanDto>();
+            CreateMap<PremiumplanDto, Premiumplan>();
+
+            CreateMap<Paymenthistory, PaymenthistoryDto>();
+            CreateMap<PaymenthistoryDto, Paymenthistory>();
         }
     }
 
