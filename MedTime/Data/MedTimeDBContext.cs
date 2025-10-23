@@ -39,6 +39,10 @@ public partial class MedTimeDBContext : DbContext
 
     public virtual DbSet<Notificationhistory> Notificationhistories { get; set; }
 
+    public virtual DbSet<Premiumplan> Premiumplans { get; set; }
+
+    public virtual DbSet<Paymenthistory> Paymenthistories { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -50,6 +54,8 @@ public partial class MedTimeDBContext : DbContext
             .HasPostgresEnum<MedicineTypeEnum>("medicine_type")
             .HasPostgresEnum<MedicineUnitEnum>("medicine_unit")
             .HasPostgresEnum<NotificationStatusEnum>("notification_status")
+            .HasPostgresEnum<PaymentStatusEnum>("payment_status")
+            .HasPostgresEnum<PremiumPlanTypeEnum>("premium_plan_type")
             .HasPostgresEnum<RepeatPatternEnum>("repeat_pattern")
             .HasPostgresEnum<UserRoleEnum>("user_role");
 
@@ -433,6 +439,94 @@ public partial class MedTimeDBContext : DbContext
                 .HasForeignKey(d => d.Scheduleid)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("notificationhistory_scheduleid_fkey");
+        });
+
+        modelBuilder.Entity<Premiumplan>(entity =>
+        {
+            entity.HasKey(e => e.Planid).HasName("premiumplan_pkey");
+
+            entity.ToTable("premiumplan");
+
+            entity.HasIndex(e => e.Isactive, "idx_premiumplan_isactive");
+            entity.HasIndex(e => e.Plantype, "idx_premiumplan_plantype");
+
+            entity.Property(e => e.Planid).HasColumnName("planid");
+            entity.Property(e => e.Plantype)
+                .HasColumnName("plantype")
+                .HasColumnType("premium_plan_type");
+            entity.Property(e => e.Planname)
+                .HasMaxLength(100)
+                .HasColumnName("planname");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.Durationdays).HasColumnName("durationdays");
+            entity.Property(e => e.Price)
+                .HasPrecision(10, 2)
+                .HasColumnName("price");
+            entity.Property(e => e.Discountpercent)
+                .HasPrecision(5, 2)
+                .HasColumnName("discountpercent");
+            entity.Property(e => e.Isactive)
+                .HasDefaultValue(true)
+                .HasColumnName("isactive");
+            entity.Property(e => e.Createdat)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("createdat");
+            entity.Property(e => e.Updatedat)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("updatedat");
+        });
+
+        modelBuilder.Entity<Paymenthistory>(entity =>
+        {
+            entity.HasKey(e => e.Paymentid).HasName("paymenthistory_pkey");
+
+            entity.ToTable("paymenthistory");
+
+            entity.HasIndex(e => e.Userid, "idx_paymenthistory_userid");
+            entity.HasIndex(e => e.Orderid, "idx_paymenthistory_orderid").IsUnique();
+            entity.HasIndex(e => e.Status, "idx_paymenthistory_status");
+            entity.HasIndex(e => e.Paidat, "idx_paymenthistory_paidat");
+
+            entity.Property(e => e.Paymentid).HasColumnName("paymentid");
+            entity.Property(e => e.Userid).HasColumnName("userid");
+            entity.Property(e => e.Planid).HasColumnName("planid");
+            entity.Property(e => e.Orderid)
+                .HasMaxLength(50)
+                .HasColumnName("orderid");
+            entity.Property(e => e.Amount)
+                .HasPrecision(10, 2)
+                .HasColumnName("amount");
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasColumnType("payment_status")
+                .HasDefaultValue(PaymentStatusEnum.PENDING);
+            entity.Property(e => e.Payosresponse).HasColumnName("payosresponse");
+            entity.Property(e => e.Transactionid)
+                .HasMaxLength(100)
+                .HasColumnName("transactionid");
+            entity.Property(e => e.Paidat)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("paidat");
+            entity.Property(e => e.Createdat)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("createdat");
+            entity.Property(e => e.Updatedat)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("updatedat");
+
+            entity.HasOne(d => d.User).WithMany(p => p.Paymenthistories)
+                .HasForeignKey(d => d.Userid)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_payment_user");
+
+            entity.HasOne(d => d.Plan).WithMany(p => p.Paymenthistories)
+                .HasForeignKey(d => d.Planid)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_payment_plan");
         });
 
         OnModelCreatingPartial(modelBuilder);

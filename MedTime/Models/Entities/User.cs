@@ -55,4 +55,6 @@ public partial class User
     public virtual ICollection<Devicetoken> Devicetokens { get; set; } = new List<Devicetoken>();
 
     public virtual ICollection<Notificationhistory> Notificationhistories { get; set; } = new List<Notificationhistory>();
+
+    public virtual ICollection<Paymenthistory> Paymenthistories { get; set; } = new List<Paymenthistory>();
 }
