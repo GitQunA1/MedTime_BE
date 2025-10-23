@@ -17,6 +17,8 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(builder.Configuration.GetConnectionString("DefaultConnection"));
+
+// Existing enums
 dataSourceBuilder.MapEnum<UserRoleEnum>("user_role");
 dataSourceBuilder.MapEnum<MedicineTypeEnum>("medicine_type");
 dataSourceBuilder.MapEnum<MedicineUnitEnum>("medicine_unit");
@@ -27,6 +29,11 @@ dataSourceBuilder.MapEnum<ConfirmedByEnum>("confirmed_by");
 dataSourceBuilder.MapEnum<CallStatusEnum>("call_status");
 dataSourceBuilder.MapEnum<DeviceTypeEnum>("device_type");
 dataSourceBuilder.MapEnum<NotificationStatusEnum>("notification_status");
+
+// Payment enums - Use name translator to keep UPPERCASE format
+dataSourceBuilder.MapEnum<PaymentStatusEnum>("payment_status", new Npgsql.NameTranslation.NpgsqlNullNameTranslator());
+dataSourceBuilder.MapEnum<PremiumPlanTypeEnum>("premium_plan_type", new Npgsql.NameTranslation.NpgsqlNullNameTranslator());
+
 var dataSource = dataSourceBuilder.Build();
 
 builder.Services.AddControllers()
@@ -93,6 +100,9 @@ builder.Services.AddScoped<UserRepo>();
 builder.Services.AddScoped<AuthRepo>();
 builder.Services.AddScoped<DevicetokenRepo>();
 builder.Services.AddScoped<NotificationhistoryRepo>();
+builder.Services.AddScoped<ReportRepo>();
+builder.Services.AddScoped<PremiumplanRepo>();
+builder.Services.AddScoped<PaymenthistoryRepo>();
 
 // Services
 builder.Services.AddScoped<AppointmentService>();
@@ -109,6 +119,8 @@ builder.Services.AddScoped<TokenCacheService>();
 builder.Services.AddSingleton<FirebaseService>();
 builder.Services.AddScoped<DevicetokenService>();
 builder.Services.AddScoped<NotificationService>();
+builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<PaymentService>();
 
 // Helpers & Auth
 builder.Services.AddScoped<JwtHelper>();
@@ -126,6 +138,12 @@ builder.Services.AddDbContext<MedTimeDBContext>(options =>
 
 builder.Services.Configure<JwtSettings>(
     builder.Configuration.GetSection("JwtSettings"));
+
+builder.Services.Configure<PayOSSettings>(
+    builder.Configuration.GetSection("PayOS"));
+
+// Add HttpClient for PayOS API calls
+builder.Services.AddHttpClient();
 
 // Configure JWT authentication
 builder.Services.AddAuthentication(options =>
