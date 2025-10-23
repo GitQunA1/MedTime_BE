@@ -16,14 +16,24 @@ namespace MedTime.Services
         {
             _logger = logger;
 
-            // Initialize Firebase App nếu chưa có
             if (FirebaseApp.DefaultInstance == null)
             {
-                var credential = GoogleCredential.FromFile("medtime-e523a-firebase-adminsdk-fbsvc-8d7d70da2d.json");
-                _firebaseApp = FirebaseApp.Create(new AppOptions
+                // Đọc từ environment variable (production)
+                var credentialJson = Environment.GetEnvironmentVariable("FIREBASE_CREDENTIALS");
+
+                if (string.IsNullOrEmpty(credentialJson))
                 {
-                    Credential = credential
-                });
+                    // Fallback: đọc từ file (local development)
+                    var credential = GoogleCredential.FromFile("medtime-e523a-firebase-adminsdk-fbsvc-8d7d70da2d.json");
+                    _firebaseApp = FirebaseApp.Create(new AppOptions { Credential = credential });
+                }
+                else
+                {
+                    // Production: parse JSON từ env
+                    var credential = GoogleCredential.FromJson(credentialJson);
+                    _firebaseApp = FirebaseApp.Create(new AppOptions { Credential = credential });
+                }
+
                 _logger.LogInformation("Firebase initialized successfully");
             }
             else
