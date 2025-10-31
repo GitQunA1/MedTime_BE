@@ -65,10 +65,17 @@ namespace MedTime.Services
         #region Create Payment Link
         public async Task<CreatePaymentResponse?> CreatePaymentLinkAsync(int userId, CreatePaymentRequest request)
         {
+            Console.WriteLine($"[Payment] Starting payment creation for userId={userId}, planId={request.PlanId}");
+            
             // Get plan
             var plan = await _planRepo.GetPlanByIdAsync(request.PlanId);
             if (plan == null)
+            {
+                Console.WriteLine($"[Payment] Plan not found: planId={request.PlanId}");
                 throw new Exception("Plan not found");
+            }
+
+            Console.WriteLine($"[Payment] Plan found: {plan.Planname}, Price={plan.Price}");
 
             // Calculate final price
             var finalPrice = plan.Price;
@@ -77,8 +84,33 @@ namespace MedTime.Services
                 finalPrice = plan.Price * (1 - plan.Discountpercent.Value / 100);
             }
 
+            Console.WriteLine($"[Payment] Final price calculated: {finalPrice}");
+
             // Generate unique order ID
             var orderId = GenerateOrderId();
+            Console.WriteLine($"[Payment] Generated orderId: {orderId}");
+
+            // Call PayOS API to create payment link
+            Console.WriteLine($"[Payment] Calling PayOS API...");
+            Console.WriteLine($"[Payment] PayOS Config - ClientId: {_payosSettings.ClientId}");
+            Console.WriteLine($"[Payment] PayOS Config - BaseUrl: {_payosSettings.BaseUrl}");
+            Console.WriteLine($"[Payment] PayOS Config - ApiKey: {(_payosSettings.ApiKey?.Length > 0 ? "***" + _payosSettings.ApiKey.Substring(_payosSettings.ApiKey.Length - 4) : "NULL")}");
+            
+            var payosResponse = await CreatePayOSPaymentLink(
+                orderId,
+                finalPrice,
+                plan.Planname,
+                request.ReturnUrl ?? _payosSettings.ReturnUrl,
+                request.CancelUrl ?? _payosSettings.CancelUrl
+            );
+            
+            if (payosResponse == null)
+            {
+                Console.WriteLine($"[Payment] ❌ PayOS API returned null - Payment creation failed");
+                throw new Exception("Failed to create payment link from PayOS");
+            }
+
+            Console.WriteLine($"[Payment] ✅ PayOS API success - CheckoutUrl: {payosResponse.CheckoutUrl}");
 
             // Create payment history record
             var payment = new Paymenthistory
@@ -93,22 +125,7 @@ namespace MedTime.Services
             };
 
             await _paymentRepo.CreateAsync(payment);
-
-            // Call PayOS API to create payment link
-            var payosResponse = await CreatePayOSPaymentLink(
-                orderId,
-                finalPrice,
-                plan.Planname,
-                request.ReturnUrl ?? _payosSettings.ReturnUrl,
-                request.CancelUrl ?? _payosSettings.CancelUrl
-            );
-
-            if (payosResponse == null)
-            {
-                // Update payment status to FAILED
-                await _paymentRepo.UpdatePaymentStatusAsync(orderId, PaymentStatusEnum.FAILED);
-                throw new Exception("Failed to create payment link from PayOS");
-            }
+            Console.WriteLine($"[Payment] Payment record created in database");
 
             return new CreatePaymentResponse
             {
@@ -129,18 +146,36 @@ namespace MedTime.Services
         {
             try
             {
+                // Validate URLs - nếu FE truyền "string" thì dùng default từ config
+                var validReturnUrl = (string.IsNullOrEmpty(returnUrl) || returnUrl == "string") 
+                    ? _payosSettings.ReturnUrl 
+                    : returnUrl;
+                
+                var validCancelUrl = (string.IsNullOrEmpty(cancelUrl) || cancelUrl == "string") 
+                    ? _payosSettings.CancelUrl 
+                    : cancelUrl;
+
+                Console.WriteLine($"[PayOS] Using returnUrl: {validReturnUrl}");
+                Console.WriteLine($"[PayOS] Using cancelUrl: {validCancelUrl}");
+
+                // Generate signature
+                var orderCodeLong = long.Parse(orderId);
+                var signature = GeneratePaymentSignature(
+                    orderCodeLong, 
+                    (int)amount, 
+                    description, 
+                    validCancelUrl, 
+                    validReturnUrl
+                );
+
                 var requestBody = new
                 {
-                    orderCode = long.Parse(orderId),
+                    orderCode = orderCodeLong,
                     amount = (int)amount,
                     description = description,
-                    returnUrl = returnUrl,
-                    cancelUrl = cancelUrl,
-                    webhookUrl = _payosSettings.WebhookUrl,
-                    buyerName = "MedTime User",
-                    buyerEmail = "user@medtime.com",
-                    buyerPhone = "0123456789",
-                    buyerAddress = "Vietnam",
+                    returnUrl = validReturnUrl,
+                    cancelUrl = validCancelUrl,
+                    signature = signature,
                     items = new[]
                     {
                         new
@@ -149,24 +184,30 @@ namespace MedTime.Services
                             quantity = 1,
                             price = (int)amount
                         }
-                    },
-                    expiredAt = DateTimeOffset.UtcNow.AddMinutes(30).ToUnixTimeSeconds()
+                    }
                 };
 
                 var jsonContent = JsonSerializer.Serialize(requestBody);
-                var signature = GenerateSignature(jsonContent);
+                Console.WriteLine($"[PayOS] Request Body: {jsonContent}");
 
-                var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"{_payosSettings.BaseUrl}/v2/payment-requests");
+                var url = $"{_payosSettings.BaseUrl}/v2/payment-requests";
+                Console.WriteLine($"[PayOS] Calling URL: {url}");
+                
+                var httpRequest = new HttpRequestMessage(HttpMethod.Post, url);
                 httpRequest.Headers.Add("x-client-id", _payosSettings.ClientId);
                 httpRequest.Headers.Add("x-api-key", _payosSettings.ApiKey);
                 httpRequest.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
+                Console.WriteLine($"[PayOS] Sending request...");
                 var response = await _httpClient.SendAsync(httpRequest);
                 var responseContent = await response.Content.ReadAsStringAsync();
 
+                Console.WriteLine($"[PayOS] Response Status: {response.StatusCode}");
+                Console.WriteLine($"[PayOS] Response Body: {responseContent}");
+
                 if (!response.IsSuccessStatusCode)
                 {
-                    Console.WriteLine($"PayOS Error: {responseContent}");
+                    Console.WriteLine($"[PayOS] ❌ HTTP Error {response.StatusCode}: {responseContent}");
                     return null;
                 }
 
@@ -175,8 +216,11 @@ namespace MedTime.Services
                     PropertyNameCaseInsensitive = true
                 });
 
+                Console.WriteLine($"[PayOS] Parsed Response - Code: {payosResponse?.Code}, Desc: {payosResponse?.Desc}");
+
                 if (payosResponse?.Code == "00" && payosResponse.Data != null)
                 {
+                    Console.WriteLine($"[PayOS] ✅ Success - CheckoutUrl: {payosResponse.Data.CheckoutUrl}");
                     return new PayOSCreatePaymentLinkResponse
                     {
                         CheckoutUrl = payosResponse.Data.CheckoutUrl,
@@ -185,11 +229,13 @@ namespace MedTime.Services
                     };
                 }
 
+                Console.WriteLine($"[PayOS] ❌ Invalid response code or missing data");
                 return null;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error creating PayOS payment link: {ex.Message}");
+                Console.WriteLine($"[PayOS] ❌ Exception: {ex.Message}");
+                Console.WriteLine($"[PayOS] StackTrace: {ex.StackTrace}");
                 return null;
             }
         }
@@ -361,9 +407,28 @@ namespace MedTime.Services
         #region Helper Methods
         private string GenerateOrderId()
         {
-            // Generate unique 13-digit order ID (timestamp based)
-            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            return timestamp.ToString();
+            // Generate unique order ID (max 9 digits for PayOS)
+            // Use last 9 digits of Unix timestamp in seconds + random 3 digits
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var random = new Random().Next(100, 999);
+            var orderId = long.Parse($"{timestamp % 1000000}{random}");
+            return orderId.ToString();
+        }
+
+        private string GeneratePaymentSignature(long orderCode, decimal amount, string description, string cancelUrl, string returnUrl)
+        {
+            // Tạo data string theo format PayOS (sắp xếp theo alphabet)
+            var dataString = $"amount={amount}&cancelUrl={cancelUrl}&description={description}&orderCode={orderCode}&returnUrl={returnUrl}";
+            
+            Console.WriteLine($"[PayOS] Signature Data String: {dataString}");
+            
+            using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_payosSettings.ChecksumKey)))
+            {
+                var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(dataString));
+                var signature = BitConverter.ToString(hash).Replace("-", "").ToLower();
+                Console.WriteLine($"[PayOS] Generated Signature: {signature}");
+                return signature;
+            }
         }
 
         private string GenerateSignature(string data)
