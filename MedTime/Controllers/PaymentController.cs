@@ -138,7 +138,7 @@ namespace MedTime.Controllers
         /// </summary>
         [HttpPost("payos-callback")]
         [AllowAnonymous]
-        public async Task<IActionResult> PayOSCallback([FromBody] VerifyWebhookRequest request)
+        public async Task<IActionResult> PayOSCallback([FromBody] PayOSWebhookRequest request)
         {
             try
             {
@@ -150,12 +150,12 @@ namespace MedTime.Controllers
                         400));
                 }
 
-                var isValid = await _paymentService.HandlePayOSWebhookAsync(request.Signature, request.Data);
-                
-                if (!isValid)
+                var processed = await _paymentService.HandlePayOSWebhookAsync(request);
+
+                if (!processed)
                 {
                     return BadRequest(ApiResponse<object>.ErrorResponse(
-                        "Invalid Webhook",
+                        "Bad Request",
                         "Webhook signature verification failed",
                         400));
                 }
@@ -166,7 +166,6 @@ namespace MedTime.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Webhook error: {ex.Message}");
                 return StatusCode(500, ApiResponse<object>.ErrorResponse(
                     "Internal Server Error",
                     ex.Message,

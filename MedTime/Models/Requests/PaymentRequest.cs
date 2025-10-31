@@ -21,9 +21,22 @@ namespace MedTime.Models.Requests
         public long OrderCode { get; set; }
     }
 
-    public class VerifyWebhookRequest
+    public class PayOSWebhookRequest
     {
+        public string Code { get; set; } = null!;
+        public string Desc { get; set; } = null!;
+        public PayOSWebhookData? Data { get; set; }
         public string Signature { get; set; } = null!;
-        public object Data { get; set; } = null!;
+    }
+
+    public class PayOSWebhookData
+    {
+        public long OrderCode { get; set; }
+        public decimal Amount { get; set; }
+        public string Description { get; set; } = null!;
+        public string AccountNumber { get; set; } = null!;
+        public string? Reference { get; set; }  // Transaction ID
+        public string TransactionDateTime { get; set; } = null!;
+        public string? PaymentLinkId { get; set; }
     }
 }

@@ -49,18 +49,21 @@ namespace MedTime.Repositories
             string? payosResponse = null)
         {
             var payment = await _context.Paymenthistories
+                .AsTracking()
                 .FirstOrDefaultAsync(p => p.Orderid == orderId);
 
             if (payment == null) return false;
 
+            var now = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
+
             payment.Status = status;
             payment.Transactionid = transactionId;
             payment.Payosresponse = payosResponse;
-            payment.Updatedat = DateTime.UtcNow;
+            payment.Updatedat = now;
 
             if (status == PaymentStatusEnum.PAID)
             {
-                payment.Paidat = DateTime.UtcNow;
+                payment.Paidat = now;
             }
 
             await _context.SaveChangesAsync();

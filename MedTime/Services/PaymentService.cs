@@ -307,84 +307,108 @@ namespace MedTime.Services
         #endregion
 
         #region Webhook Handler
-        public async Task<bool> HandlePayOSWebhookAsync(string signature, object webhookData)
+        public async Task<bool> HandlePayOSWebhookAsync(PayOSWebhookRequest webhookRequest)
         {
             try
             {
+                Console.WriteLine($"[Webhook] Processing webhook - Code: {webhookRequest.Code}, OrderCode: {webhookRequest.Data?.OrderCode}");
+                
                 // Verify webhook signature
-                var dataString = JsonSerializer.Serialize(webhookData);
-                var isValid = VerifyWebhookSignature(signature, dataString);
+                // PayOS tính signature từ chuỗi: code={code}&desc={desc}&orderCode={orderCode}&...
+                var dataForSignature = $"code={webhookRequest.Code}&desc={webhookRequest.Desc}&orderCode={webhookRequest.Data?.OrderCode}&amount={webhookRequest.Data?.Amount}";
+                var isValid = VerifyWebhookSignature(webhookRequest.Signature, dataForSignature);
 
                 if (!isValid)
                 {
-                    Console.WriteLine("Invalid webhook signature");
+                    Console.WriteLine($"[Webhook] Invalid signature");
+                    Console.WriteLine($"[Webhook] Data string: {dataForSignature}");
+                    Console.WriteLine($"[Webhook] Received signature: {webhookRequest.Signature}");
                     return false;
                 }
 
-                // Parse webhook data
-                var data = JsonSerializer.Deserialize<PayOSWebhookData>(dataString, new JsonSerializerOptions
+                if (webhookRequest.Data == null)
                 {
-                    PropertyNameCaseInsensitive = true
-                });
-
-                if (data == null)
+                    Console.WriteLine($"[Webhook] No data in webhook");
                     return false;
+                }
 
+                var orderCode = webhookRequest.Data.OrderCode.ToString();
+                
                 // Process based on status
-                if (data.Code == "00") // Success
+                if (webhookRequest.Code == "00") // Success
                 {
-                    await ProcessSuccessfulPayment(data.OrderCode, data.Reference);
+                    Console.WriteLine($"[Webhook] Payment successful for order {orderCode}");
+                    await ProcessSuccessfulPayment(orderCode, webhookRequest.Data.Reference);
                     return true;
                 }
-                else if (data.Code == "01") // Cancelled
+                else if (webhookRequest.Code == "01") // Cancelled
                 {
+                    Console.WriteLine($"[Webhook] Payment cancelled for order {orderCode}");
                     await _paymentRepo.UpdatePaymentStatusAsync(
-                        data.OrderCode,
-                        PaymentStatusEnum.CANCELLED,
-                        payosResponse: dataString
+                        orderCode,
+                        PaymentStatusEnum.CANCELLED
                     );
                     return true;
                 }
                 else // Failed
                 {
+                    Console.WriteLine($"[Webhook] Payment failed for order {orderCode}");
                     await _paymentRepo.UpdatePaymentStatusAsync(
-                        data.OrderCode,
-                        PaymentStatusEnum.FAILED,
-                        payosResponse: dataString
+                        orderCode,
+                        PaymentStatusEnum.FAILED
                     );
                     return true;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error handling webhook: {ex.Message}");
+                Console.WriteLine($"[Webhook] Error: {ex.Message}");
+                Console.WriteLine($"[Webhook] StackTrace: {ex.StackTrace}");
                 return false;
             }
         }
 
         private async Task ProcessSuccessfulPayment(string orderId, string? transactionId)
         {
+            Console.WriteLine($"[ProcessPayment] Starting to process payment for orderId={orderId}");
+            
             var payment = await _paymentRepo.GetByOrderIdAsync(orderId);
-            if (payment == null || payment.Status == PaymentStatusEnum.PAID)
+            
+            if (payment == null)
+            {
+                Console.WriteLine($"[ProcessPayment] ❌ Payment not found in database for orderId={orderId}");
                 return;
+            }
+            
+            if (payment.Status == PaymentStatusEnum.PAID)
+            {
+                Console.WriteLine($"[ProcessPayment] ⚠️ Payment already PAID for orderId={orderId}");
+                return;
+            }
+
+            Console.WriteLine($"[ProcessPayment] Payment found - Status: {payment.Status}, Amount: {payment.Amount}, UserId: {payment.Userid}");
 
             // Update payment status
+            Console.WriteLine($"[ProcessPayment] Updating payment status to PAID...");
             await _paymentRepo.UpdatePaymentStatusAsync(
                 orderId,
                 PaymentStatusEnum.PAID,
                 transactionId
             );
+            Console.WriteLine($"[ProcessPayment] ✅ Payment status updated to PAID");
 
             // Update user premium status
             var premiumStart = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
             var premiumEnd = premiumStart.AddDays(payment.Plan.Durationdays);
 
+            Console.WriteLine($"[ProcessPayment] Updating user premium status - UserId: {payment.Userid}, Start: {premiumStart}, End: {premiumEnd}");
             await _userRepo.UpdatePremiumStatusAsync(
                 payment.Userid,
                 true,
                 premiumStart,
                 premiumEnd
             );
+            Console.WriteLine($"[ProcessPayment] ✅ User premium status updated - IsPremium=true");
         }
         #endregion
 
@@ -475,16 +499,6 @@ namespace MedTime.Services
         {
             public string Status { get; set; } = null!;
             public string? TransactionId { get; set; }
-        }
-
-        private class PayOSWebhookData
-        {
-            public string Code { get; set; } = null!;
-            public string Desc { get; set; } = null!;
-            public string OrderCode { get; set; } = null!;
-            public string? Reference { get; set; }  // Transaction ID
-            public decimal Amount { get; set; }
-            public string Status { get; set; } = null!;
         }
         #endregion
     }

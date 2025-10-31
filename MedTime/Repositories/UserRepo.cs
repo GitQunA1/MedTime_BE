@@ -14,13 +14,22 @@ namespace MedTime.Repositories
 
         public async Task<bool> UpdatePremiumStatusAsync(int userId, bool isPremium, DateTime? premiumStart, DateTime? premiumEnd)
         {
-            var user = await _context.Users.FindAsync(userId);
+            var user = await _context.Users
+                .AsTracking()
+                .FirstOrDefaultAsync(u => u.Userid == userId);
             if (user == null) return false;
 
+            DateTime? ConvertToUnspecified(DateTime? value)
+            {
+                return value.HasValue
+                    ? DateTime.SpecifyKind(value.Value, DateTimeKind.Unspecified)
+                    : null;
+            }
+
             user.Ispremium = isPremium;
-            user.Premiumstart = premiumStart;
-            user.Premiumend = premiumEnd;
-            user.Updatedat = DateTime.UtcNow;
+            user.Premiumstart = ConvertToUnspecified(premiumStart);
+            user.Premiumend = ConvertToUnspecified(premiumEnd);
+            user.Updatedat = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
 
             await _context.SaveChangesAsync();
             return true;
