@@ -125,6 +125,7 @@ builder.Services.AddScoped<DevicetokenService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<PaymentService>();
+builder.Services.AddScoped<PaymentAnalyticsService>();
 
 // Helpers & Auth
 builder.Services.AddScoped<JwtHelper>();

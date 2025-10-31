@@ -69,5 +69,32 @@ namespace MedTime.Repositories
             await _context.SaveChangesAsync();
             return true;
         }
+
+        public IQueryable<Paymenthistory> GetAnalyticsQuery(DateTime? from, DateTime? to)
+        {
+            var query = _context.Paymenthistories
+                .Include(p => p.Plan)
+                .Include(p => p.User)
+                .AsNoTracking()
+                .AsQueryable();
+
+            if (from.HasValue)
+            {
+                var fromValue = from.Value;
+                query = query.Where(p =>
+                    (p.Paidat.HasValue && p.Paidat.Value >= fromValue) ||
+                    (!p.Paidat.HasValue && p.Createdat.HasValue && p.Createdat.Value >= fromValue));
+            }
+
+            if (to.HasValue)
+            {
+                var toValue = to.Value;
+                query = query.Where(p =>
+                    (p.Paidat.HasValue && p.Paidat.Value <= toValue) ||
+                    (!p.Paidat.HasValue && p.Createdat.HasValue && p.Createdat.Value <= toValue));
+            }
+
+            return query;
+        }
     }
 }
