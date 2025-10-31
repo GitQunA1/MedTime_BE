@@ -143,8 +143,47 @@ builder.Services.AddDbContext<MedTimeDBContext>(options =>
 builder.Services.Configure<JwtSettings>(
     builder.Configuration.GetSection("JwtSettings"));
 
-builder.Services.Configure<PayOSSettings>(
-    builder.Configuration.GetSection("PayOS"));
+builder.Services.Configure<PayOSSettings>(options =>
+{
+    builder.Configuration.GetSection("PayOSSettings").Bind(options);
+
+    string? GetEnv(string key) => Environment.GetEnvironmentVariable(key);
+
+    if (string.IsNullOrWhiteSpace(options.ClientId))
+    {
+        options.ClientId = GetEnv("PayOSSettings__ClientId") ?? string.Empty;
+    }
+
+    if (string.IsNullOrWhiteSpace(options.ApiKey))
+    {
+        options.ApiKey = GetEnv("PayOSSettings__ApiKey") ?? string.Empty;
+    }
+
+    if (string.IsNullOrWhiteSpace(options.ChecksumKey))
+    {
+        options.ChecksumKey = GetEnv("PayOSSettings__ChecksumKey") ?? string.Empty;
+    }
+
+    if (string.IsNullOrWhiteSpace(options.ReturnUrl))
+    {
+        options.ReturnUrl = GetEnv("PayOSSettings__ReturnUrl") ?? string.Empty;
+    }
+
+    if (string.IsNullOrWhiteSpace(options.CancelUrl))
+    {
+        options.CancelUrl = GetEnv("PayOSSettings__CancelUrl") ?? string.Empty;
+    }
+
+    if (string.IsNullOrWhiteSpace(options.WebhookUrl))
+    {
+        options.WebhookUrl = GetEnv("PayOSSettings__WebhookUrl") ?? string.Empty;
+    }
+
+    if (string.IsNullOrWhiteSpace(options.BaseUrl))
+    {
+        options.BaseUrl = GetEnv("PayOSSettings__BaseUrl") ?? "https://api-merchant.payos.vn";
+    }
+});
 
 // Add HttpClient for PayOS API calls
 builder.Services.AddHttpClient();
