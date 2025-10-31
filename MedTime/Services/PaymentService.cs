@@ -22,6 +22,8 @@ namespace MedTime.Services
         private readonly IMapper _mapper;
         private readonly PayOSSettings _payosSettings;
         private readonly HttpClient _httpClient;
+    private static readonly object _configLogLock = new();
+    private static bool _configLogged;
 
         public PaymentService(
             PaymenthistoryRepo paymentRepo,
@@ -37,6 +39,70 @@ namespace MedTime.Services
             _mapper = mapper;
             _payosSettings = payosSettings.Value;
             _httpClient = httpClientFactory.CreateClient();
+
+            LogConfigurationIfNeeded();
+        }
+
+        private void LogConfigurationIfNeeded()
+        {
+            if (_configLogged)
+            {
+                return;
+            }
+
+            lock (_configLogLock)
+            {
+                if (_configLogged)
+                {
+                    return;
+                }
+
+                Console.WriteLine("[PayOS][Config] ----- BEGIN CONFIG DIAGNOSTICS -----");
+
+                // Values resolved via options binding
+                Console.WriteLine($"[PayOS][Config] Options ClientId: {MaskValue(_payosSettings.ClientId)}");
+                Console.WriteLine($"[PayOS][Config] Options ApiKey: {MaskValue(_payosSettings.ApiKey)}");
+                Console.WriteLine($"[PayOS][Config] Options ChecksumKey: {MaskValue(_payosSettings.ChecksumKey)}");
+                Console.WriteLine($"[PayOS][Config] Options BaseUrl: {_payosSettings.BaseUrl}");
+                Console.WriteLine($"[PayOS][Config] Options ReturnUrl: {_payosSettings.ReturnUrl}");
+                Console.WriteLine($"[PayOS][Config] Options CancelUrl: {_payosSettings.CancelUrl}");
+                Console.WriteLine($"[PayOS][Config] Options WebhookUrl: {_payosSettings.WebhookUrl}");
+
+                // Raw environment variables for troubleshooting
+                LogEnvVariable("PayOSSettings__ClientId");
+                LogEnvVariable("PayOSSettings__ApiKey", true);
+                LogEnvVariable("PayOSSettings__ChecksumKey", true);
+                LogEnvVariable("PayOSSettings__BaseUrl");
+                LogEnvVariable("PayOSSettings__ReturnUrl");
+                LogEnvVariable("PayOSSettings__CancelUrl");
+                LogEnvVariable("PayOSSettings__WebhookUrl");
+
+                Console.WriteLine("[PayOS][Config] ----- END CONFIG DIAGNOSTICS -----");
+
+                _configLogged = true;
+            }
+        }
+
+        private static void LogEnvVariable(string key, bool mask = false)
+        {
+            var value = Environment.GetEnvironmentVariable(key);
+            var display = mask ? MaskValue(value) : value;
+            Console.WriteLine($"[PayOS][Config] Env {key}: {(string.IsNullOrWhiteSpace(display) ? "<null-or-empty>" : display)}");
+        }
+
+        private static string MaskValue(string? value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return "<null-or-empty>";
+            }
+
+            if (value.Length <= 4)
+            {
+                return new string('*', value.Length);
+            }
+
+            return $"***{value[^4..]}";
         }
 
         #region Get Plans
