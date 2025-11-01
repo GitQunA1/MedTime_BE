@@ -5,6 +5,7 @@ using MedTime.Models.Entities;
 using MedTime.Models.Requests;
 using MedTime.Models.Responses;
 using MedTime.Repositories;
+using System;
 
 namespace MedTime.Services
 {
@@ -12,15 +13,18 @@ namespace MedTime.Services
     {
         private readonly PrescriptionRepo _repo;
         private readonly PrescriptionscheduleRepo _scheduleRepo;
+        private readonly UserRepo _userRepo;
         private readonly IMapper _mapper;
 
         public PrescriptionService(
             PrescriptionRepo repo, 
             PrescriptionscheduleRepo scheduleRepo,
+            UserRepo userRepo,
             IMapper mapper)
         {
             _repo = repo;
             _scheduleRepo = scheduleRepo;
+            _userRepo = userRepo;
             _mapper = mapper;
         }
 
@@ -63,6 +67,8 @@ namespace MedTime.Services
 
         public async Task<PrescriptionDto> CreateAsync(PrescriptionCreate request, int userId)
         {
+            await EnsureUserCanCreatePrescriptionAsync(userId);
+
             var entity = _mapper.Map<Prescription>(request);
             entity.Userid = userId;
             var createdEntity = await _repo.CreateAsync(entity);
@@ -74,6 +80,32 @@ namespace MedTime.Services
             }
 
             return _mapper.Map<PrescriptionDto>(createdEntity);
+        }
+
+        private async Task EnsureUserCanCreatePrescriptionAsync(int userId)
+        {
+            var canCreate = await CanCreateMorePrescriptionsInternalAsync(userId);
+            if (!canCreate)
+            {
+                throw new InvalidOperationException("User must be premium to create more than one prescription.");
+            }
+        }
+
+        private async Task<bool> CanCreateMorePrescriptionsInternalAsync(int userId)
+        {
+            var user = await _userRepo.GetByIdAsync(userId);
+            if (user == null)
+            {
+                throw new InvalidOperationException("User not found.");
+            }
+
+            var currentCount = await _repo.CountByUserAsync(userId);
+            if (user.Ispremium == true)
+            {
+                return true;
+            }
+
+            return currentCount == 0;
         }
 
         /// <summary>

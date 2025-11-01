@@ -5,6 +5,7 @@ using MedTime.Models.Responses;
 using MedTime.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System;
 using System.Security.Claims;
 
 namespace MedTime.Controllers
@@ -115,12 +116,22 @@ namespace MedTime.Controllers
             }
 
             var userId = int.Parse(userIdClaim);
-            var createdDto = await _service.CreateAsync(request, userId);
+            try
+            {
+                var createdDto = await _service.CreateAsync(request, userId);
 
-            return Ok(ApiResponse<PrescriptionDto>.SuccessResponse(
-                createdDto,
-                "Prescription created successfully",
-                201));
+                return Ok(ApiResponse<PrescriptionDto>.SuccessResponse(
+                    createdDto,
+                    "Prescription created successfully",
+                    201));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse<object>.ErrorResponse(
+                    ex.Message,
+                    "Forbidden",
+                    403));
+            }
         }
 
         /// <summary>
