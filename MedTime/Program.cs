@@ -40,6 +40,22 @@ dataSourceBuilder.MapEnum<PremiumPlanTypeEnum>("premium_plan_type", new Npgsql.N
 
 var dataSource = dataSourceBuilder.Build();
 
+// Configure CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:3000",
+                "https://medtime.app",
+                "https://www.medtime.app"
+            )
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
+    });
+});
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -232,6 +248,8 @@ app.UseSwaggerUI(c =>
 //
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowFrontend");
 
 app.UseAuthentication();
 app.UseAuthorization();
