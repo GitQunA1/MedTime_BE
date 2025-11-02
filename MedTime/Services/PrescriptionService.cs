@@ -87,7 +87,7 @@ namespace MedTime.Services
             var canCreate = await CanCreateMorePrescriptionsInternalAsync(userId);
             if (!canCreate)
             {
-                throw new InvalidOperationException("User must be premium to create more than one prescription.");
+                throw new InvalidOperationException("User must be premium to create more than two prescriptions.");
             }
         }
 
@@ -105,7 +105,7 @@ namespace MedTime.Services
                 return true;
             }
 
-            return currentCount == 0;
+            return currentCount < 2;
         }
 
         /// <summary>
