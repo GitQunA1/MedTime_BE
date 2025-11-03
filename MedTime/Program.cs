@@ -47,7 +47,7 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
                 "http://localhost:3000",
-                "https://medtime.app",
+                "https://medtime-admin-tdkj.vercel.app/",
                 "https://www.medtime.app"
             )
             .AllowAnyMethod()
