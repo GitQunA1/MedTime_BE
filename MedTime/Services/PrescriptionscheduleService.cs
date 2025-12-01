@@ -20,14 +20,24 @@ namespace MedTime.Services
             _mapper = mapper;
         }
 
-        public async Task<PaginatedResult<PrescriptionscheduleDto>> GetAllAsync(int pageNumber, int pageSize, int? filterUserId = null)
+        public async Task<PaginatedResult<PrescriptionscheduleDto>> GetAllAsync(int pageNumber, int pageSize, int? filterUserId = null, List<int>? additionalUserIds = null)
         {
             var query = _repo.GetAllQuery();
             
-            // Filter theo Prescription.Userid
+            // Filter theo Prescription.Userid hoặc guardian's patients
             if (filterUserId.HasValue)
             {
-                query = query.Where(s => s.Prescription.Userid == filterUserId.Value);
+                if (additionalUserIds != null && additionalUserIds.Count > 0)
+                {
+                    // Include cả user hiện tại và các patients của guardian
+                    var allUserIds = new List<int> { filterUserId.Value };
+                    allUserIds.AddRange(additionalUserIds);
+                    query = query.Where(s => allUserIds.Contains(s.Prescription.Userid));
+                }
+                else
+                {
+                    query = query.Where(s => s.Prescription.Userid == filterUserId.Value);
+                }
             }
 
             var paginatedEntities = await query.ToPaginatedListAsync(pageNumber, pageSize);
@@ -54,6 +64,16 @@ namespace MedTime.Services
             var scheduleWithPrescription = await query.FirstOrDefaultAsync();
             
             return scheduleWithPrescription?.Prescription?.Userid == userId;
+        }
+
+        /// <summary>
+        /// Lấy Userid của prescription mà schedule thuộc về
+        /// </summary>
+        public async Task<int?> GetScheduleOwnerUserIdAsync(int scheduleId)
+        {
+            var query = _repo.GetAllQuery().Where(s => s.Scheduleid == scheduleId);
+            var scheduleWithPrescription = await query.FirstOrDefaultAsync();
+            return scheduleWithPrescription?.Prescription?.Userid;
         }
 
         public async Task<PrescriptionscheduleDto?> GetByIdAsync(int id)

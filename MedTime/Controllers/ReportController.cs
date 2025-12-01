@@ -14,16 +14,18 @@ namespace MedTime.Controllers
     public class ReportController : ControllerBase
     {
         private readonly ReportService _reportService;
+        private readonly GuardianlinkService _guardianlinkService;
 
-        public ReportController(ReportService reportService)
+        public ReportController(ReportService reportService, GuardianlinkService guardianlinkService)
         {
             _reportService = reportService;
+            _guardianlinkService = guardianlinkService;
         }
 
         /// <summary>
         /// GET /api/report/adherence
         /// Lấy báo cáo tuân thủ uống thuốc với filtering linh hoạt
-        /// User: Chỉ xem được dữ liệu của mình
+        /// User: Xem dữ liệu của mình hoặc của patient mà mình là guardian
         /// Admin: Xem được dữ liệu của bất kỳ user nào
         /// </summary>
         [HttpGet("adherence")]
@@ -55,17 +57,22 @@ namespace MedTime.Controllers
                     // Admin có thể xem user bất kỳ hoặc tất cả (userId = null)
                     targetUserId = userId;
                 }
-                else
+                else if (userId.HasValue && userId.Value != currentUserId)
                 {
-                    // User thường chỉ xem được của mình
-                    // Validate: Nếu truyền userId khác với token → Forbidden
-                    if (userId.HasValue && userId.Value != currentUserId)
+                    // User muốn xem data của người khác - check guardian relationship
+                    var isGuardian = await _guardianlinkService.IsGuardianOfPatientAsync(currentUserId, userId.Value);
+                    if (!isGuardian)
                     {
                         return StatusCode(403, ApiResponse<object>.ErrorResponse(
                             "Forbidden",
-                            $"User role can only view their own data. Your userId is {currentUserId}, but you requested userId {userId.Value}",
+                            $"You can only view your own data or data of patients you are guardian of. Your userId is {currentUserId}, but you requested userId {userId.Value}",
                             403));
                     }
+                    targetUserId = userId.Value;
+                }
+                else
+                {
+                    // User xem data của chính mình
                     targetUserId = currentUserId;
                 }
 
@@ -95,7 +102,7 @@ namespace MedTime.Controllers
         /// <summary>
         /// GET /api/report/missed-doses
         /// Lấy báo cáo số lần bỏ uống thuốc
-        /// User: Chỉ xem được dữ liệu của mình
+        /// User: Xem dữ liệu của mình hoặc của patient mà mình là guardian
         /// Admin: Xem được dữ liệu của bất kỳ user nào
         /// </summary>
         [HttpGet("missed-doses")]
@@ -125,17 +132,21 @@ namespace MedTime.Controllers
                 {
                     targetUserId = userId;
                 }
-                else
+                else if (userId.HasValue && userId.Value != currentUserId)
                 {
-                    // User thường chỉ xem được của mình
-                    // Validate: Nếu truyền userId khác với token → Forbidden
-                    if (userId.HasValue && userId.Value != currentUserId)
+                    // User muốn xem data của người khác - check guardian relationship
+                    var isGuardian = await _guardianlinkService.IsGuardianOfPatientAsync(currentUserId, userId.Value);
+                    if (!isGuardian)
                     {
                         return StatusCode(403, ApiResponse<object>.ErrorResponse(
                             "Forbidden",
-                            $"User role can only view their own data. Your userId is {currentUserId}, but you requested userId {userId.Value}",
+                            $"You can only view your own data or data of patients you are guardian of. Your userId is {currentUserId}, but you requested userId {userId.Value}",
                             403));
                     }
+                    targetUserId = userId.Value;
+                }
+                else
+                {
                     targetUserId = currentUserId;
                 }
 
@@ -164,7 +175,7 @@ namespace MedTime.Controllers
         /// <summary>
         /// GET /api/report/medicine-usage
         /// Lấy báo cáo sử dụng thuốc theo loại
-        /// User: Chỉ xem được dữ liệu của mình
+        /// User: Xem dữ liệu của mình hoặc của patient mà mình là guardian
         /// Admin: Xem được dữ liệu của bất kỳ user nào
         /// </summary>
         [HttpGet("medicine-usage")]
@@ -194,17 +205,21 @@ namespace MedTime.Controllers
                 {
                     targetUserId = userId;
                 }
-                else
+                else if (userId.HasValue && userId.Value != currentUserId)
                 {
-                    // User thường chỉ xem được của mình
-                    // Validate: Nếu truyền userId khác với token → Forbidden
-                    if (userId.HasValue && userId.Value != currentUserId)
+                    // User muốn xem data của người khác - check guardian relationship
+                    var isGuardian = await _guardianlinkService.IsGuardianOfPatientAsync(currentUserId, userId.Value);
+                    if (!isGuardian)
                     {
                         return StatusCode(403, ApiResponse<object>.ErrorResponse(
                             "Forbidden",
-                            $"User role can only view their own data. Your userId is {currentUserId}, but you requested userId {userId.Value}",
+                            $"You can only view your own data or data of patients you are guardian of. Your userId is {currentUserId}, but you requested userId {userId.Value}",
                             403));
                     }
+                    targetUserId = userId.Value;
+                }
+                else
+                {
                     targetUserId = currentUserId;
                 }
 

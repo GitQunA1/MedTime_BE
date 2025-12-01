@@ -16,19 +16,22 @@ namespace MedTime.Controllers
     public class PrescriptionController : ControllerBase
     {
         private readonly PrescriptionService _service;
+        private readonly GuardianlinkService _guardianlinkService;
 
-        public PrescriptionController(PrescriptionService service)
+        public PrescriptionController(PrescriptionService service, GuardianlinkService guardianlinkService)
         {
             _service = service;
+            _guardianlinkService = guardianlinkService;
         }
 
         /// <summary>
         /// Lấy danh sách prescriptions có phân trang
-        /// USER: Chỉ xem được prescription của chính mình
+        /// USER: Xem prescription của chính mình hoặc của patient mà mình là guardian
         /// ADMIN: Xem tất cả
+        /// Query param: ?patientId=xxx để xem prescription của patient (nếu là guardian)
         /// </summary>
         [HttpGet]
-        public async Task<IActionResult> GetAllAsync([FromQuery] PaginationRequest pagination)
+        public async Task<IActionResult> GetAllAsync([FromQuery] PaginationRequest pagination, [FromQuery] int? patientId = null)
         {
             if (!ModelState.IsValid)
             {
@@ -47,8 +50,33 @@ namespace MedTime.Controllers
                     "Unauthorized", "User not logged in", 401));
             }
 
-            // ADMIN: Lấy tất cả, USER: Chỉ lấy của chính mình (author)
-            int? filterUserId = (userRole == "ADMIN") ? null : int.Parse(userIdClaim);
+            var currentUserId = int.Parse(userIdClaim);
+            int? filterUserId;
+
+            if (userRole == "ADMIN")
+            {
+                // ADMIN: Lấy tất cả hoặc theo patientId nếu có
+                filterUserId = patientId;
+            }
+            else if (patientId.HasValue)
+            {
+                // USER muốn xem prescription của patient khác
+                // Check xem có phải guardian của patient đó không
+                var isGuardian = await _guardianlinkService.IsGuardianOfPatientAsync(currentUserId, patientId.Value);
+                if (!isGuardian)
+                {
+                    return StatusCode(403, ApiResponse<object>.ErrorResponse(
+                        "Forbidden",
+                        "You are not authorized to view this patient's prescriptions. You must be their guardian.",
+                        403));
+                }
+                filterUserId = patientId.Value;
+            }
+            else
+            {
+                // USER: Chỉ lấy của chính mình
+                filterUserId = currentUserId;
+            }
 
             var paginatedResult = await _service.GetAllAsync(pagination.PageNumber, pagination.PageSize, filterUserId);
             return Ok(ApiResponse<PaginatedResult<PrescriptionDto>>.SuccessResponse(
@@ -58,7 +86,7 @@ namespace MedTime.Controllers
 
         /// <summary>
         /// Lấy thông tin prescription theo ID
-        /// USER: Chỉ xem được prescription của chính mình (author)
+        /// USER: Xem prescription của chính mình hoặc của patient mà mình là guardian
         /// ADMIN: Xem tất cả
         /// </summary>
         [HttpGet("{id}")]
@@ -82,13 +110,19 @@ namespace MedTime.Controllers
                     "Unauthorized", "User not logged in", 401));
             }
 
-            // Kiểm tra quyền: ADMIN hoặc chính user đó (author)
-            if (userRole != "ADMIN" && dto.Userid != int.Parse(userIdClaim))
+            var currentUserId = int.Parse(userIdClaim);
+
+            // Kiểm tra quyền: ADMIN, chính user đó, hoặc guardian của user đó
+            if (userRole != "ADMIN" && dto.Userid != currentUserId)
             {
-                return StatusCode(403, ApiResponse<object>.ErrorResponse(
-                    "Forbidden",
-                    "You do not have permission to view this prescription",
-                    403));
+                var isGuardian = await _guardianlinkService.IsGuardianOfPatientAsync(currentUserId, dto.Userid);
+                if (!isGuardian)
+                {
+                    return StatusCode(403, ApiResponse<object>.ErrorResponse(
+                        "Forbidden",
+                        "You do not have permission to view this prescription",
+                        403));
+                }
             }
 
             return Ok(ApiResponse<PrescriptionDto>.SuccessResponse(dto, "Prescription retrieved successfully"));
@@ -96,9 +130,11 @@ namespace MedTime.Controllers
 
         /// <summary>
         /// Tạo prescription mới
+        /// USER: Tạo cho chính mình
+        /// GUARDIAN: Có thể tạo cho patient bằng cách truyền patientId
         /// </summary>
         [HttpPost]
-        public async Task<IActionResult> CreateAsync([FromBody] PrescriptionCreate request)
+        public async Task<IActionResult> CreateAsync([FromBody] PrescriptionCreate request, [FromQuery] int? patientId = null)
         {
             if (!ModelState.IsValid)
             {
@@ -115,10 +151,31 @@ namespace MedTime.Controllers
                     "Unauthorized", "User not logged in", 401));
             }
 
-            var userId = int.Parse(userIdClaim);
+            var currentUserId = int.Parse(userIdClaim);
+            int targetUserId;
+
+            if (patientId.HasValue && patientId.Value != currentUserId)
+            {
+                // Guardian muốn tạo prescription cho patient
+                var isGuardian = await _guardianlinkService.IsGuardianOfPatientAsync(currentUserId, patientId.Value);
+                if (!isGuardian)
+                {
+                    return StatusCode(403, ApiResponse<object>.ErrorResponse(
+                        "Forbidden",
+                        "You are not authorized to create prescriptions for this patient. You must be their guardian.",
+                        403));
+                }
+                targetUserId = patientId.Value;
+            }
+            else
+            {
+                // Tạo cho chính mình
+                targetUserId = currentUserId;
+            }
+
             try
             {
-                var createdDto = await _service.CreateAsync(request, userId);
+                var createdDto = await _service.CreateAsync(request, targetUserId);
 
                 return Ok(ApiResponse<PrescriptionDto>.SuccessResponse(
                     createdDto,
@@ -136,7 +193,8 @@ namespace MedTime.Controllers
 
         /// <summary>
         /// Cập nhật prescription
-        /// USER: Chỉ update được prescription của chính mình (author)
+        /// USER: Chỉ update được prescription của chính mình
+        /// GUARDIAN: Có thể update prescription của patient mà mình là guardian
         /// ADMIN: Update tất cả
         /// </summary>
         [HttpPut("{id}")]
@@ -169,13 +227,19 @@ namespace MedTime.Controllers
                     "Unauthorized", "User not logged in", 401));
             }
 
-            // Chỉ author hoặc admin mới được update
-            if (userRole != "ADMIN" && existing.Userid != int.Parse(userIdClaim))
+            var currentUserId = int.Parse(userIdClaim);
+
+            // Kiểm tra quyền: ADMIN, chính user đó, hoặc guardian của user đó
+            if (userRole != "ADMIN" && existing.Userid != currentUserId)
             {
-                return StatusCode(403, ApiResponse<object>.ErrorResponse(
-                    "Forbidden",
-                    "You do not have permission to update this prescription. Only the author can modify it.",
-                    403));
+                var isGuardian = await _guardianlinkService.IsGuardianOfPatientAsync(currentUserId, existing.Userid);
+                if (!isGuardian)
+                {
+                    return StatusCode(403, ApiResponse<object>.ErrorResponse(
+                        "Forbidden",
+                        "You do not have permission to update this prescription. Only the owner or their guardian can modify it.",
+                        403));
+                }
             }
 
             var result = await _service.UpdateAsync(id, request);
@@ -184,7 +248,8 @@ namespace MedTime.Controllers
 
         /// <summary>
         /// Xóa prescription
-        /// USER: Chỉ xóa được prescription của chính mình (author)
+        /// USER: Chỉ xóa được prescription của chính mình
+        /// GUARDIAN: Có thể xóa prescription của patient mà mình là guardian
         /// ADMIN: Xóa tất cả
         /// </summary>
         [HttpDelete("{id}")]
@@ -209,13 +274,19 @@ namespace MedTime.Controllers
                     "Unauthorized", "User not logged in", 401));
             }
 
-            // Chỉ author hoặc admin mới được xóa
-            if (userRole != "ADMIN" && existing.Userid != int.Parse(userIdClaim))
+            var currentUserId = int.Parse(userIdClaim);
+
+            // Kiểm tra quyền: ADMIN, chính user đó, hoặc guardian của user đó
+            if (userRole != "ADMIN" && existing.Userid != currentUserId)
             {
-                return StatusCode(403, ApiResponse<object>.ErrorResponse(
-                    "Forbidden",
-                    "You do not have permission to delete this prescription. Only the author can delete it.",
-                    403));
+                var isGuardian = await _guardianlinkService.IsGuardianOfPatientAsync(currentUserId, existing.Userid);
+                if (!isGuardian)
+                {
+                    return StatusCode(403, ApiResponse<object>.ErrorResponse(
+                        "Forbidden",
+                        "You do not have permission to delete this prescription. Only the owner or their guardian can delete it.",
+                        403));
+                }
             }
 
             var result = await _service.DeleteAsync(id);

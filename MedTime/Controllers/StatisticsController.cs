@@ -14,16 +14,18 @@ namespace MedTime.Controllers
     public class StatisticsController : ControllerBase
     {
         private readonly ReportService _reportService;
+        private readonly GuardianlinkService _guardianlinkService;
 
-        public StatisticsController(ReportService reportService)
+        public StatisticsController(ReportService reportService, GuardianlinkService guardianlinkService)
         {
             _reportService = reportService;
+            _guardianlinkService = guardianlinkService;
         }
 
         /// <summary>
         /// GET /api/statistics/dashboard
         /// Lấy thống kê tổng quan cho dashboard
-        /// User: Chỉ xem được dữ liệu của mình
+        /// User: Xem dữ liệu của mình hoặc của patient mà mình là guardian
         /// Admin: Xem được dữ liệu của bất kỳ user nào
         /// </summary>
         [HttpGet("dashboard")]
@@ -51,17 +53,21 @@ namespace MedTime.Controllers
                     // Admin có thể xem dashboard của user khác
                     targetUserId = userId ?? currentUserId;
                 }
-                else
+                else if (userId.HasValue && userId.Value != currentUserId)
                 {
-                    // User thường chỉ xem được của mình
-                    // Validate: Nếu truyền userId khác với token → Forbidden
-                    if (userId.HasValue && userId.Value != currentUserId)
+                    // User muốn xem data của người khác - check guardian relationship
+                    var isGuardian = await _guardianlinkService.IsGuardianOfPatientAsync(currentUserId, userId.Value);
+                    if (!isGuardian)
                     {
                         return StatusCode(403, ApiResponse<object>.ErrorResponse(
                             "Forbidden",
-                            $"User role can only view their own data. Your userId is {currentUserId}, but you requested userId {userId.Value}",
+                            $"You can only view your own data or data of patients you are guardian of. Your userId is {currentUserId}, but you requested userId {userId.Value}",
                             403));
                     }
+                    targetUserId = userId.Value;
+                }
+                else
+                {
                     targetUserId = currentUserId;
                 }
 
@@ -83,7 +89,7 @@ namespace MedTime.Controllers
         /// <summary>
         /// GET /api/statistics/trends
         /// Lấy xu hướng theo thời gian
-        /// User: Chỉ xem được dữ liệu của mình
+        /// User: Xem dữ liệu của mình hoặc của patient mà mình là guardian
         /// Admin: Xem được dữ liệu của bất kỳ user nào
         /// </summary>
         [HttpGet("trends")]
@@ -114,17 +120,21 @@ namespace MedTime.Controllers
                 {
                     targetUserId = userId;
                 }
-                else
+                else if (userId.HasValue && userId.Value != currentUserId)
                 {
-                    // User thường chỉ xem được của mình
-                    // Validate: Nếu truyền userId khác với token → Forbidden
-                    if (userId.HasValue && userId.Value != currentUserId)
+                    // User muốn xem data của người khác - check guardian relationship
+                    var isGuardian = await _guardianlinkService.IsGuardianOfPatientAsync(currentUserId, userId.Value);
+                    if (!isGuardian)
                     {
                         return StatusCode(403, ApiResponse<object>.ErrorResponse(
                             "Forbidden",
-                            $"User role can only view their own data. Your userId is {currentUserId}, but you requested userId {userId.Value}",
+                            $"You can only view your own data or data of patients you are guardian of. Your userId is {currentUserId}, but you requested userId {userId.Value}",
                             403));
                     }
+                    targetUserId = userId.Value;
+                }
+                else
+                {
                     targetUserId = currentUserId;
                 }
 

@@ -6,6 +6,7 @@ using MedTime.Models.Enums;
 using MedTime.Models.Requests;
 using MedTime.Models.Responses;
 using MedTime.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace MedTime.Services
 {
@@ -41,6 +42,66 @@ namespace MedTime.Services
             var entity = await _repo.GetByIdAsync(guardianId, patientId);
             if (entity == null) return null;
             return _mapper.Map<GuardianlinkDto>(entity);
+        }
+
+        /// <summary>
+        /// Kiểm tra xem guardianId có phải là guardian của patientId không
+        /// Dùng để validate quyền truy cập data của patient
+        /// </summary>
+        public async Task<bool> IsGuardianOfPatientAsync(int guardianId, int patientId)
+        {
+            var link = await _repo.GetByIdAsync(guardianId, patientId);
+            return link != null;
+        }
+
+        /// <summary>
+        /// Lấy danh sách tất cả patients mà guardian đang theo dõi
+        /// </summary>
+        public async Task<List<GuardianlinkDto>> GetPatientsByGuardianAsync(int guardianId)
+        {
+            var links = await _repo.GetAllQuery()
+                .Where(g => g.Guardianid == guardianId)
+                .ToListAsync();
+            return _mapper.Map<List<GuardianlinkDto>>(links);
+        }
+
+        /// <summary>
+        /// Lấy danh sách tất cả guardians đang theo dõi patient
+        /// </summary>
+        public async Task<List<GuardianlinkDto>> GetGuardiansByPatientAsync(int patientId)
+        {
+            var links = await _repo.GetAllQuery()
+                .Where(g => g.Patientid == patientId)
+                .ToListAsync();
+            return _mapper.Map<List<GuardianlinkDto>>(links);
+        }
+
+        /// <summary>
+        /// Lấy danh sách patient IDs mà guardian đang theo dõi
+        /// Dùng để check quyền truy cập nhanh
+        /// </summary>
+        public async Task<List<int>> GetPatientIdsByGuardianAsync(int guardianId)
+        {
+            return await _repo.GetAllQuery()
+                .Where(g => g.Guardianid == guardianId)
+                .Select(g => g.Patientid)
+                .ToListAsync();
+        }
+
+        /// <summary>
+        /// Kiểm tra xem userId có quyền truy cập data của targetUserId không
+        /// Trả về true nếu:
+        /// - userId == targetUserId (chính mình)
+        /// - userId là guardian của targetUserId
+        /// </summary>
+        public async Task<bool> CanAccessPatientDataAsync(int userId, int targetUserId)
+        {
+            // Chính mình
+            if (userId == targetUserId)
+                return true;
+
+            // Là guardian của target
+            return await IsGuardianOfPatientAsync(userId, targetUserId);
         }
 
         /// <summary>
@@ -105,10 +166,15 @@ namespace MedTime.Services
             return true;
         }
 
+        /// <summary>
+        /// Xóa guardian link với composite key
+        /// </summary>
         public async Task<bool> DeleteAsync(int guardianId, int patientId)
         {
-            // Guardianlink composite key nên dùng guardianId
-            return await _repo.Delete(guardianId);
+            var existing = await _repo.GetByIdAsync(guardianId, patientId);
+            if (existing == null) return false;
+
+            return await _repo.DeleteByCompositeKeyAsync(guardianId, patientId);
         }
     }
 }

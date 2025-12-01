@@ -39,5 +39,20 @@ namespace MedTime.Repositories
                 .Include(g => g.Patient)
                 .FirstOrDefaultAsync(g => g.Guardianid == guardianId && g.Patientid == patientId);
         }
+
+        /// <summary>
+        /// Xóa guardian link bằng composite key (guardianId, patientId)
+        /// </summary>
+        public async Task<bool> DeleteByCompositeKeyAsync(int guardianId, int patientId)
+        {
+            var entity = await _context.Guardianlinks
+                .FirstOrDefaultAsync(g => g.Guardianid == guardianId && g.Patientid == patientId);
+            
+            if (entity == null) return false;
+
+            _context.Guardianlinks.Remove(entity);
+            await _context.SaveChangesAsync();
+            return true;
+        }
     }
 }

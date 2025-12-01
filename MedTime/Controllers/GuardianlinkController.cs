@@ -38,6 +38,48 @@ namespace MedTime.Controllers
                 "Guardian links retrieved successfully"));
         }
 
+        /// <summary>
+        /// Lấy danh sách patients mà guardian hiện tại đang theo dõi
+        /// </summary>
+        [HttpGet("my-patients")]
+        public async Task<IActionResult> GetMyPatientsAsync()
+        {
+            var guardianIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(guardianIdClaim) || !int.TryParse(guardianIdClaim, out int guardianId))
+            {
+                return Unauthorized(ApiResponse<object>.ErrorResponse(
+                    "Invalid token",
+                    "Could not extract user ID from token",
+                    401));
+            }
+
+            var patients = await _service.GetPatientsByGuardianAsync(guardianId);
+            return Ok(ApiResponse<List<GuardianlinkDto>>.SuccessResponse(
+                patients,
+                "Patients retrieved successfully"));
+        }
+
+        /// <summary>
+        /// Lấy danh sách guardians đang theo dõi user hiện tại
+        /// </summary>
+        [HttpGet("my-guardians")]
+        public async Task<IActionResult> GetMyGuardiansAsync()
+        {
+            var patientIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(patientIdClaim) || !int.TryParse(patientIdClaim, out int patientId))
+            {
+                return Unauthorized(ApiResponse<object>.ErrorResponse(
+                    "Invalid token",
+                    "Could not extract user ID from token",
+                    401));
+            }
+
+            var guardians = await _service.GetGuardiansByPatientAsync(patientId);
+            return Ok(ApiResponse<List<GuardianlinkDto>>.SuccessResponse(
+                guardians,
+                "Guardians retrieved successfully"));
+        }
+
         [HttpGet("{guardianId}/{patientId}")]
         public async Task<IActionResult> GetByIdAsync(int guardianId, int patientId)
         {
@@ -114,9 +156,33 @@ namespace MedTime.Controllers
             return Ok(ApiResponse<object>.SuccessResponse(null!, "Guardian link updated successfully"));
         }
 
+        /// <summary>
+        /// Xóa guardian link - Chỉ guardian hoặc patient trong link mới được xóa
+        /// </summary>
         [HttpDelete("{guardianId}/{patientId}")]
         public async Task<IActionResult> DeleteAsync(int guardianId, int patientId)
         {
+            // Lấy userId từ token
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userRole = User.FindFirstValue(ClaimTypes.Role);
+
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(ApiResponse<object>.ErrorResponse(
+                    "Invalid token",
+                    "Could not extract user ID from token",
+                    401));
+            }
+
+            // Kiểm tra quyền: Chỉ guardian, patient trong link hoặc ADMIN mới được xóa
+            if (userRole != "ADMIN" && userId != guardianId && userId != patientId)
+            {
+                return StatusCode(403, ApiResponse<object>.ErrorResponse(
+                    "Forbidden",
+                    "You can only delete your own guardian links",
+                    403));
+            }
+
             var result = await _service.DeleteAsync(guardianId, patientId);
             if (!result)
             {
