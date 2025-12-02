@@ -139,6 +139,8 @@ TestResult*/
 **/[Dd]ocker-compose*
 docker-compose.override.yml
 
+!MedTime/Dockerfile
+
 # Publish output
 publish/
 out/
@@ -146,3 +148,7 @@ out/
 # Azure
 .csproj.user
 *.azurePubxml
+
+# === SENSITIVE CONFIGURATION ===
+appsettings.json
+firebase-service-account.json
