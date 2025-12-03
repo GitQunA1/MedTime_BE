@@ -22,7 +22,10 @@ namespace MedTime.Services
 
         public async Task<PaginatedResult<PrescriptionscheduleDto>> GetAllAsync(int pageNumber, int pageSize, int? filterUserId = null, List<int>? additionalUserIds = null)
         {
-            var query = _repo.GetAllQuery();
+            var query = _repo.GetAllQuery()
+                .Include(s => s.Prescription); // Include Prescription để filter theo Userid
+            
+            IQueryable<Prescriptionschedule> filteredQuery = query;
             
             // Filter theo Prescription.Userid hoặc guardian's patients
             if (filterUserId.HasValue)
@@ -32,15 +35,15 @@ namespace MedTime.Services
                     // Include cả user hiện tại và các patients của guardian
                     var allUserIds = new List<int> { filterUserId.Value };
                     allUserIds.AddRange(additionalUserIds);
-                    query = query.Where(s => allUserIds.Contains(s.Prescription.Userid));
+                    filteredQuery = query.Where(s => allUserIds.Contains(s.Prescription.Userid));
                 }
                 else
                 {
-                    query = query.Where(s => s.Prescription.Userid == filterUserId.Value);
+                    filteredQuery = query.Where(s => s.Prescription.Userid == filterUserId.Value);
                 }
             }
 
-            var paginatedEntities = await query.ToPaginatedListAsync(pageNumber, pageSize);
+            var paginatedEntities = await filteredQuery.ToPaginatedListAsync(pageNumber, pageSize);
             var dtoItems = _mapper.Map<List<PrescriptionscheduleDto>>(paginatedEntities.Items);
 
             return new PaginatedResult<PrescriptionscheduleDto>(
@@ -56,14 +59,15 @@ namespace MedTime.Services
         /// </summary>
         public async Task<bool> CheckUserAccessAsync(int scheduleId, int userId)
         {
-            var schedule = await _repo.GetByIdAsync(scheduleId);
-            if (schedule == null) return false;
+            // Include Prescription để load navigation property
+            var scheduleWithPrescription = await _repo.GetAllQuery()
+                .Include(s => s.Prescription)
+                .Where(s => s.Scheduleid == scheduleId)
+                .FirstOrDefaultAsync();
             
-            // Cần load Prescription để check Userid
-            var query = _repo.GetAllQuery().Where(s => s.Scheduleid == scheduleId);
-            var scheduleWithPrescription = await query.FirstOrDefaultAsync();
+            if (scheduleWithPrescription == null) return false;
             
-            return scheduleWithPrescription?.Prescription?.Userid == userId;
+            return scheduleWithPrescription.Prescription?.Userid == userId;
         }
 
         /// <summary>
@@ -71,8 +75,12 @@ namespace MedTime.Services
         /// </summary>
         public async Task<int?> GetScheduleOwnerUserIdAsync(int scheduleId)
         {
-            var query = _repo.GetAllQuery().Where(s => s.Scheduleid == scheduleId);
-            var scheduleWithPrescription = await query.FirstOrDefaultAsync();
+            // Include Prescription để load navigation property
+            var scheduleWithPrescription = await _repo.GetAllQuery()
+                .Include(s => s.Prescription)
+                .Where(s => s.Scheduleid == scheduleId)
+                .FirstOrDefaultAsync();
+                
             return scheduleWithPrescription?.Prescription?.Userid;
         }
 
