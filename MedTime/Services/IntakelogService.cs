@@ -27,14 +27,28 @@ namespace MedTime.Services
             _mapper = mapper;
         }
 
-        public async Task<PaginatedResult<IntakelogDto>> GetAllAsync(int pageNumber, int pageSize, int? filterUserId = null)
+        public async Task<PaginatedResult<IntakelogDto>> GetAllAsync(int pageNumber, int pageSize, int? filterUserId = null, List<int>? additionalUserIds = null)
         {
             var query = _repo.GetAllQuery();
             
+            // Filter theo Userid hoặc guardian's patients
             if (filterUserId.HasValue)
             {
-                query = query.Where(i => i.Userid == filterUserId.Value);
+                if (additionalUserIds != null && additionalUserIds.Count > 0)
+                {
+                    // Include cả user hiện tại và các patients của guardian
+                    var allUserIds = new List<int> { filterUserId.Value };
+                    allUserIds.AddRange(additionalUserIds);
+                    query = query.Where(i => allUserIds.Contains(i.Userid));
+                }
+                else
+                {
+                    query = query.Where(i => i.Userid == filterUserId.Value);
+                }
             }
+
+            // Order by newest first
+            query = query.OrderByDescending(i => i.Remindertime);
 
             var paginatedEntities = await query.ToPaginatedListAsync(pageNumber, pageSize);
             var dtoItems = _mapper.Map<List<IntakelogDto>>(paginatedEntities.Items);
